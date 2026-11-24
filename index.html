@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!-- LearnWow member pass (do not remove): gets the member pass from nusparklearnwow.com and shows the Join screen when a visitor runs out of tries -->
+<script>
+(function () {
+  if (window.__lwgate) return; window.__lwgate = 1;
+  var JOIN = "https://nusparklearnwow.com/join/", LOGIN = "https://nusparklearnwow.com/membership-login/";
+  var LW = { pass: null, vid: "" };
+  try { LW.vid = localStorage.getItem("lw_vid") || ""; if (!LW.vid) { LW.vid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)); localStorage.setItem("lw_vid", LW.vid); } }
+  catch (e) { LW.vid = "s" + Math.random().toString(36).slice(2, 12); }
+  var okHost = /(^|\.)(nusparklearnwow|nusparkpublishing|nusparkmarketing)\.com$/;
+  var ready = new Promise(function (done) {
+    if (window.parent === window) return done();
+    var fin = false, end = function () { if (!fin) { fin = true; done(); } };
+    window.addEventListener("message", function (e) {
+      var d = e.data; if (!d || d.type !== "lw-pass") return;
+      try { if (!okHost.test(new URL(e.origin).hostname)) return; } catch (x) { return; }
+      LW.pass = d.pass || null;
+      if (d.vid && /^[a-z0-9]{6,40}$/i.test(d.vid)) LW.vid = "w" + d.vid;
+      end();
+    });
+    try { window.parent.postMessage({ type: "lw-pass-request" }, "*"); } catch (x) {}
+    setTimeout(end, 1500);
+  });
+
+  var lastAct = 0;
+  ["pointerdown", "keydown", "touchstart"].forEach(function (ev) { window.addEventListener(ev, function (e) { if (e.isTrusted) lastAct = Date.now(); }, true); });
+
+  var shown = false;
+  function show(j) {
+    if (shown) return; shown = true;
+    var reason = j && j.lwgate;
+    var title = reason === "budget" ? "You've reached this month's limit" : reason === "preview" ? "This is a members feature" : "You've used your tries";
+    var text = reason === "budget"
+      ? "Your membership has hit its monthly usage limit. It resets at the start of next month. Questions? Contact us at nusparklearnwow.com/support."
+      : "Join LearnWow to unlock all 30 experiences. 7-day trial, then $29.99/month. Cancel anytime.";
+    var box = document.createElement("div");
+    box.setAttribute("style", "position:fixed;inset:0;z-index:2147483647;background:rgba(10,25,60,.72);display:flex;align-items:center;justify-content:center;padding:20px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif");
+    var btn = "display:inline-block;margin:6px;padding:14px 28px;border-radius:40px;font-weight:800;font-size:17px;text-decoration:none;";
+    box.innerHTML =
+      '<div style="background:#123166;color:#fff;max-width:440px;width:100%;border-radius:22px;padding:30px 26px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">' +
+      '<div style="font-size:40px;line-height:1;color:#F2B33D">&#10022;</div>' +
+      '<div style="font-size:24px;font-weight:800;margin:10px 0 8px">' + title + '</div>' +
+      '<div style="font-size:16px;line-height:1.5;opacity:.92;margin-bottom:18px">' + text + '</div>' +
+      (reason === "budget" ? "" : '<a target="_top" href="' + JOIN + '" style="' + btn + 'background:#F2B33D;color:#123166">Join Now</a>') +
+      '<a target="_top" href="' + LOGIN + '" style="' + btn + 'background:transparent;color:#fff;border:2px solid rgba(255,255,255,.6)">Member Log In</a>' +
+      '<div><button type="button" style="margin-top:10px;background:none;border:0;color:#cfd8ef;font-size:14px;cursor:pointer;text-decoration:underline">Keep looking around</button></div>' +
+      "</div>";
+    box.querySelector("button").onclick = function () { box.remove(); shown = false; };
+    (document.body || document.documentElement).appendChild(box);
+  }
+
+  // Tries left: a small note for visitors ("3 of 8 tries left"), plus a friendly heads-up on the last one.
+  var nudged = false;
+  function tries(left, total) {
+    if (!(left >= 0)) return;
+    var el = document.getElementById("lwTries");
+    if (!el) {
+      el = document.createElement("div"); el.id = "lwTries";
+      el.setAttribute("style", "position:fixed;left:12px;bottom:12px;z-index:2147483646;background:#123166;color:#fff;border:2px solid #F2B33D;border-radius:999px;padding:7px 12px 7px 14px;font:600 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.3);display:flex;gap:8px;align-items:center");
+      (document.body || document.documentElement).appendChild(el);
+    }
+    el.innerHTML = '<span>&#10022; ' + left + (total ? ' of ' + total : '') + ' tr' + (left === 1 ? 'y' : 'ies') + ' left</span><a target="_top" href="' + JOIN + '" style="color:#F2B33D;font-weight:800;text-decoration:none">Join</a><button type="button" aria-label="Hide" style="background:none;border:0;color:#cfd8ef;font-size:15px;cursor:pointer;padding:0 0 0 2px">&times;</button>';
+    el.querySelector("button").onclick = function () { el.remove(); };
+    if (left === 1 && !nudged) {
+      nudged = true;
+      var n = document.createElement("div");
+      n.setAttribute("style", "position:fixed;left:12px;bottom:58px;z-index:2147483646;max-width:300px;background:#fff;color:#123166;border-radius:14px;padding:12px 14px;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 10px 26px rgba(0,0,0,.3);border-top:4px solid #F2B33D");
+      n.innerHTML = '<b>One try left!</b><br>Members get every one of the 30 experiences, with no limits. Start with a 7-day trial and cancel anytime.<div style="margin-top:8px"><a target="_top" href="' + JOIN + '" style="background:#F2B33D;color:#123166;font-weight:800;padding:7px 14px;border-radius:999px;text-decoration:none">See membership</a> <button type="button" style="background:none;border:0;color:#123166;text-decoration:underline;cursor:pointer;font-size:13px">Got it</button></div>';
+      n.querySelector("button").onclick = function () { n.remove(); };
+      (document.body || document.documentElement).appendChild(n);
+      setTimeout(function () { if (n.parentNode) n.remove(); }, 15000);
+    }
+  }
+
+  var of = window.fetch && window.fetch.bind(window);
+  if (!of) return;
+  window.fetch = function (input, init) {
+    var url = typeof input === "string" ? input : (input && input.url) || String(input || "");
+    var u; try { u = new URL(url, location.href); } catch (e) { return of(input, init); }
+    if (u.origin !== location.origin || u.pathname.indexOf("/api/") !== 0) return of(input, init);
+    var act = Date.now() - lastAct < 30000;
+    return ready.then(function () {
+      var o = {}; if (init) for (var k in init) o[k] = init[k];
+      var hd = new Headers(o.headers || (typeof input !== "string" && input && input.headers) || undefined);
+      if (LW.pass) hd.set("x-lw-pass", LW.pass);
+      hd.set("x-lw-vid", LW.vid);
+      if (act) hd.set("x-lw-act", "1");
+      o.headers = hd;
+      return of(input, o);
+    }).then(function (r) {
+      if (r.status === 402) r.clone().json().then(function (j) { if (j && j.lwgate) show(j); }).catch(function () {});
+      try { var tl = r.headers.get("x-lw-left"); if (tl !== null && r.status !== 402) tries(parseInt(tl, 10), parseInt(r.headers.get("x-lw-total") || "0", 10)); } catch (e) {}
+      return r;
+    });
+  };
+})();
+</script>
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Just the Facts</title>
+<meta name="color-scheme" content="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Special+Elite&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#fbf5e6; --card:#fffdf7; --ink:#1d1a16; --muted:#6d655a; --line:#e3d8bf; --tape:#1d1a16;
+  --mustard:#f5b700; --red:#d7263d; --teal:#17a398; --purple:#6a4c93; --blue:#2e6fdb; --green:#2f9e44; --orange:#e4572e;
+  --max:#e4572e; --dot:#17a398; --prof:#6a4c93;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;line-height:1.5}
+body{background-image:radial-gradient(rgba(29,26,22,.05) 1px,transparent 1px);background-size:18px 18px}
+button{font-family:inherit;cursor:pointer}
+.hide{display:none!important}
+.wrap{max-width:1120px;margin:0 auto;padding:16px 16px 40px}
+h1,h2,h3{margin:0}
+.type{font-family:'Special Elite','Courier New',monospace}
+.blk{font-family:'Archivo Black',Impact,sans-serif;letter-spacing:.5px}
+
+/* header: label-maker logo + ticker */
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.logo{display:flex;align-items:center;gap:12px}
+.tape{background:var(--tape);color:#fff;padding:8px 16px 6px;border-radius:4px;transform:rotate(-1.5deg);box-shadow:3px 3px 0 var(--mustard);display:inline-block}
+.tape h1{font-family:'Archivo Black',Impact,sans-serif;font-size:clamp(24px,4vw,38px);letter-spacing:3px;line-height:1;text-shadow:0 1px 0 #555}
+.logo small{display:block;color:var(--muted);font-size:13px;font-weight:600}
+.ticker{overflow:hidden;white-space:nowrap;border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);background:var(--mustard);margin:6px 0 14px}
+.ticker div{display:inline-block;padding:6px 0;font-family:'Archivo Black',Impact,sans-serif;font-size:15px;letter-spacing:1px;animation:tick 32s linear infinite}
+.ticker span{margin:0 18px}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.ticker div{animation:none}}
+
+/* banner */
+.banner{position:relative;display:grid;grid-template-columns:repeat(8,1fr);gap:5px;border:3px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--ink);margin-bottom:16px}
+.banner .tile{aspect-ratio:3/4;background:#333 center/cover no-repeat;display:grid;place-items:center;font-size:40px}
+.banner .shade{position:absolute;inset:0;background:linear-gradient(0deg,rgba(20,18,15,.88) 0%,rgba(20,18,15,0) 58%);pointer-events:none}
+.banner .txt{position:absolute;left:16px;right:16px;bottom:12px;color:#fff}
+.banner .txt b{font-family:'Archivo Black',Impact,sans-serif;font-size:clamp(17px,2.6vw,28px);display:block;line-height:1.15}
+.banner .txt span{color:var(--mustard);font-weight:700;font-size:14px}
+.banner .credit{position:absolute;right:8px;top:6px;font-size:10px;color:rgba(255,255,255,.7)}
+@media(max-width:700px){.banner{grid-template-columns:repeat(4,1fr)}.banner .tile:nth-child(n+5){display:none}.banner .txt span,.banner .credit{display:none}.banner .txt b{font-size:17px}}
+
+/* hosts */
+.hosts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.host{background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;transition:transform .2s,box-shadow .2s}
+.host .face{width:48px;height:48px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-family:'Archivo Black',Impact,sans-serif;font-size:20px;flex:none;border:3px solid var(--ink);position:relative}
+.host .face i{position:absolute;right:-6px;bottom:-4px;font-style:normal;font-size:18px}
+.host b{display:block;font-size:15px}
+.host small{color:var(--muted);font-size:12.5px;line-height:1.3;display:block}
+.host .air{display:none;margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:800;padding:3px 7px;border-radius:4px;letter-spacing:1px}
+.host.on{transform:translateY(-3px);box-shadow:5px 5px 0 var(--c)}
+.host.on .air{display:inline-block;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.35}}
+@media(max-width:640px){.host small{display:none}.host{padding:8px}.host .face{width:40px;height:40px;font-size:17px}}
+
+/* setup */
+.step{background:var(--card);border:2px solid var(--ink);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:4px 4px 0 rgba(29,26,22,.12)}
+.step h2{font-family:'Archivo Black',Impact,sans-serif;font-size:19px;display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.step h2 b{background:var(--ink);color:var(--mustard);width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:15px}
+.sub{color:var(--muted);margin:0 0 12px;font-size:14.5px}
+.cats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+@media(max-width:900px){.cats{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:560px){
+  .cats{grid-template-columns:none;grid-template-rows:repeat(2,auto);grid-auto-flow:column;grid-auto-columns:44%;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 10px;-webkit-overflow-scrolling:touch}
+  .cat{scroll-snap-align:start;font-size:13.5px;padding:9px 8px}
+  .swipe{display:block!important}
+}
+.swipe{display:none;font-size:12.5px;color:var(--muted);font-weight:700;text-align:right;margin-top:-4px}
+.cat{background:#fff;border:2px solid var(--line);border-radius:10px;padding:10px 8px;text-align:left;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14.5px;color:var(--ink);transition:.15s}
+.cat em{font-style:normal;font-size:22px}
+.cat:hover{border-color:var(--ink);transform:translateY(-1px)}
+.cat.sel{background:var(--mustard);border-color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.or{display:flex;align-items:center;gap:10px;margin:14px 0 8px;color:var(--muted);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:1px}
+.or:before,.or:after{content:"";flex:1;height:2px;background:var(--line)}
+.inrow{display:flex;gap:8px}
+input[type=text],textarea{width:100%;font:inherit;font-size:16px;padding:12px 14px;border:2px solid var(--ink);border-radius:10px;background:#fff;color:var(--ink)}
+textarea{min-height:110px;resize:vertical}
+input[type=text]:focus,textarea:focus{outline:3px solid var(--mustard);outline-offset:1px}
+.ex{font-size:13px;color:var(--muted);margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:2px solid var(--ink);background:#fff;border-radius:999px;padding:8px 14px;font-weight:700;font-size:14px;color:var(--ink)}
+.chip.sel{background:var(--ink);color:#fff}
+.chip.mix.sel{background:var(--mustard);color:var(--ink)}
+.opts{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:700px){.opts{grid-template-columns:1fr}}
+.opt label{display:block;font-weight:800;font-size:13px;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.seg{display:inline-flex;border:2px solid var(--ink);border-radius:999px;overflow:hidden;background:#fff}
+.seg button{border:0;background:none;padding:8px 14px;font-weight:700;font-size:14px;color:var(--ink)}
+.seg button.sel{background:var(--ink);color:#fff}
+.go{display:block;width:100%;margin-top:6px;background:var(--red);color:#fff;border:3px solid var(--ink);border-radius:14px;padding:16px;font-family:'Archivo Black',Impact,sans-serif;font-size:22px;letter-spacing:1px;box-shadow:5px 5px 0 var(--ink);transition:.1s}
+.go:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--ink)}
+.err{background:#fde8e8;border:2px solid var(--red);border-radius:10px;padding:10px 14px;margin:10px 0;font-weight:600}
+
+/* studio */
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--ink);color:#fff;border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.bar h2{font-family:'Archivo Black',Impact,sans-serif;font-size:17px;letter-spacing:.5px}
+.bar h2 span{color:var(--mustard)}
+.ctl{display:flex;gap:6px;flex-wrap:wrap}
+.ctl button{background:#2d2924;color:#fff;border:1px solid #4a443c;border-radius:8px;padding:7px 11px;font-weight:700;font-size:13.5px}
+.ctl button:hover{background:#3b362f}
+.ctl button.warn{background:var(--red);border-color:var(--red)}
+.ctl button.on{background:var(--mustard);color:var(--ink);border-color:var(--mustard)}
+.note{background:#fff6d6;border:2px dashed var(--ink);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-weight:600}
+
+.cardwrap{position:relative}
+.fcard{background:var(--card);border:3px solid var(--ink);border-radius:6px;box-shadow:7px 7px 0 var(--ink);display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);overflow:hidden;min-height:380px;background-image:repeating-linear-gradient(transparent 0 31px,#e9eef7 31px 32px)}
+.fcard:before{content:"";position:absolute;left:0;right:0;top:0;height:6px;background:var(--red);border-radius:6px 6px 0 0;z-index:1}
+@media(max-width:760px){.fcard{grid-template-columns:1fr}}
+.pic{position:relative;background:var(--fc,#ddd);min-height:240px;border-right:3px solid var(--ink)}
+@media(max-width:760px){.pic{border-right:0;border-bottom:3px solid var(--ink);min-height:220px}}
+.pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pic .emo{position:absolute;inset:0;display:grid;place-items:center;font-size:90px}
+.pic .pc{position:absolute;left:6px;bottom:6px;right:6px;font-size:10.5px;color:#fff;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px}
+.pic .pc a{color:#fff}
+.body{padding:22px 22px 16px;position:relative;display:flex;flex-direction:column}
+.num{font-family:'Archivo Black',Impact,sans-serif;font-size:13px;letter-spacing:2px;color:var(--muted)}
+.stamp{position:absolute;right:18px;top:16px;transform:rotate(8deg);border:4px solid var(--sc);color:var(--sc);font-family:'Archivo Black',Impact,sans-serif;font-size:15px;letter-spacing:2px;padding:4px 10px;border-radius:6px;text-transform:uppercase;opacity:.9;background:rgba(255,255,255,.6);animation:stampIn .35s ease-out}
+@keyframes stampIn{from{transform:rotate(8deg) scale(2.2);opacity:0}to{transform:rotate(8deg) scale(1);opacity:.9}}
+.thefact{font-family:'Special Elite','Courier New',monospace;font-size:clamp(20px,2.6vw,27px);line-height:1.35;margin:28px 0 12px;padding-right:6px}
+.explain{font-size:16px;line-height:1.6;color:#2f2a24;margin:0 0 14px}
+.explain b{font-family:'Archivo Black',Impact,sans-serif;font-size:12px;letter-spacing:1.5px;color:var(--muted);display:block;margin-bottom:2px}
+.bubble{display:flex;gap:10px;align-items:flex-start;margin:4px 0 14px;opacity:.55;transition:opacity .3s}
+.bubble.show{opacity:1}
+.bubble .face{width:36px;height:36px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-family:'Archivo Black',Impact,sans-serif;font-size:15px;flex:none;border:2px solid var(--ink)}
+.bubble p{margin:0;background:#fff;border:2px solid var(--ink);border-radius:4px 14px 14px 14px;padding:8px 12px;font-weight:600;font-size:15px}
+.bubble p small{display:block;font-weight:800;color:var(--c);font-size:12px}
+.src{font-size:12.5px;color:var(--muted);border-top:2px dashed var(--line);padding-top:8px;margin-top:auto}
+.src a{color:var(--blue)}
+.true{display:inline-block;background:var(--green);color:#fff;font-weight:800;font-size:11px;padding:2px 7px;border-radius:4px;margin-right:6px;letter-spacing:1px}
+.nav{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 10px;justify-content:center}
+.btn{background:#fff;border:2px solid var(--ink);border-radius:10px;padding:9px 14px;font-weight:800;font-size:14.5px;color:var(--ink);box-shadow:3px 3px 0 var(--ink)}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.btn.y{background:var(--mustard)}
+.btn.r{background:var(--red);color:#fff}
+.btn:disabled{opacity:.4;cursor:default}
+.dots{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:6px}
+.dots button{width:34px;height:34px;border-radius:6px;border:2px solid var(--ink);background:#fff;font-weight:800;font-size:13px;color:var(--ink)}
+.dots button.cur{background:var(--ink);color:var(--mustard)}
+.dots button.wait{border-style:dashed;color:var(--muted);cursor:default}
+
+.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;min-height:380px;text-align:center;padding:20px;grid-column:1/-1}
+.loading .big{font-family:'Archivo Black',Impact,sans-serif;font-size:24px}
+.loading .stampy{border:5px solid var(--red);color:var(--red);font-family:'Archivo Black',Impact,sans-serif;font-size:30px;padding:4px 16px;border-radius:8px;transform:rotate(-6deg);animation:thump 1.1s infinite}
+@keyframes thump{0%,100%{transform:rotate(-6deg) scale(1)}45%{transform:rotate(-6deg) scale(1.15)}}
+
+.endcard{grid-column:1/-1;padding:30px 22px;text-align:center}
+.endcard h3{font-family:'Archivo Black',Impact,sans-serif;font-size:30px;margin-bottom:6px}
+
+/* report */
+.report{background:#fff;border:3px solid var(--ink);border-radius:12px;padding:18px 20px;margin-top:18px;box-shadow:5px 5px 0 var(--purple)}
+.report h3{font-family:'Archivo Black',Impact,sans-serif;font-size:22px;margin-bottom:8px;padding-right:40px}
+.report h4{font-family:'Archivo Black',Impact,sans-serif;font-size:15.5px;margin:16px 0 4px;color:var(--purple)}
+.report h4.fix{color:var(--red)}
+.report p{margin:0 0 8px;line-height:1.65}
+.report .x{position:absolute;right:12px;top:10px;background:none;border:0;font-size:22px}
+.label{font-family:'Archivo Black',Impact,sans-serif;font-size:12.5px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin:16px 0 6px}
+.qa{border-left:4px solid var(--teal);padding:6px 0 6px 12px;margin:10px 0}
+.qa b{display:block}
+.eyes{background:#f4effb;border:2px solid var(--purple);border-radius:10px;padding:12px 14px;margin-top:16px}
+.small{font-size:13.5px;color:var(--muted)}
+.spin{display:inline-block;width:16px;height:16px;border:3px solid var(--line);border-top-color:var(--red);border-radius:50%;animation:sp 1s linear infinite;vertical-align:-3px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+footer{margin-top:22px;text-align:center;font-size:12.5px;color:var(--muted)}
+
+/* print: just the fact sheet */
+#printSheet{display:none}
+@media print{
+  body{background:#fff}
+  .wrap>*:not(#printSheet){display:none!important}
+  #printSheet{display:block}
+  #printSheet h1{font-family:'Archivo Black',Impact,sans-serif;font-size:26px}
+  #printSheet .pf{border:2px solid #000;border-radius:6px;padding:10px 12px;margin:10px 0;break-inside:avoid}
+  #printSheet .pf b{font-family:'Special Elite',monospace;font-size:16px;display:block}
+  #lwTries{display:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+
+  <header class="top">
+    <div class="logo">
+      <div class="tape"><h1>JUST THE FACTS</h1></div>
+      <small>A Learn...Wow! experience</small>
+    </div>
+  </header>
+  <div class="ticker" aria-hidden="true"><div id="tickText"></div></div>
+
+  <div class="banner" aria-hidden="true" id="banner">
+    <div class="shade"></div>
+    <div class="txt"><b>Facts you'll never need. And can't stop sharing.</b><span>Useless but interesting. Extraordinary. Incredible. Unusual. Weird. True.</span></div>
+  </div>
+
+  <div class="hosts" id="hosts"></div>
+
+  <!-- ===== SETUP ===== -->
+  <section id="setup">
+    <div class="step">
+      <h2><b>1</b>Pick a topic</h2>
+      <p class="sub">Tap a category, or type any topic you like.</p>
+      <div class="cats" id="cats"></div>
+      <div class="swipe">Swipe for more categories →</div>
+      <div class="or">or type your own topic</div>
+      <div class="inrow"><input type="text" id="topicIn" maxlength="120" aria-label="Your topic" autocomplete="off"></div>
+      <div class="ex">Examples: honeybees, the Statue of Liberty, pizza, volcanoes, left-handed people, roller coasters</div>
+    </div>
+
+    <div class="step">
+      <h2><b>2</b>What kind of facts?</h2>
+      <p class="sub">Pick one or more, or mix them all.</p>
+      <div class="chips" id="flavors"></div>
+    </div>
+
+    <div class="step">
+      <h2><b>3</b>Set up the show</h2>
+      <div class="opts">
+        <div class="opt"><label>Who's listening</label><div class="seg" id="lvlSeg"><button type="button" data-v="family">Family</button><button type="button" data-v="grown">Grown-ups</button></div></div>
+        <div class="opt"><label>How many facts</label><div class="seg" id="cntSeg"><button type="button" data-v="6">6</button><button type="button" data-v="8">8</button></div></div>
+        <div class="opt"><label>Host voices</label><div class="seg" id="vocSeg"><button type="button" data-v="1">On</button><button type="button" data-v="0">Off (read only)</button></div></div>
+      </div>
+    </div>
+
+    <div id="setupErr" class="err hide"></div>
+    <button class="go" id="goBtn" type="button">🎙 ROLL THE FACTS!</button>
+    <div id="resumeRow" class="nav hide"><button class="btn y" id="resumeBtn" type="button">▶ Back to the show</button></div>
+  </section>
+
+  <!-- ===== STUDIO ===== -->
+  <section id="studio" class="hide">
+    <div class="bar">
+      <h2>ON AIR: <span id="showTitle"></span></h2>
+      <div class="ctl">
+        <button type="button" id="pauseBtn">⏸ Pause</button>
+        <button type="button" id="stopBtn">⏹ Stop</button>
+        <button type="button" id="restartBtn">↺ Restart</button>
+        <button type="button" id="voiceBtn">🔊 Voices</button>
+        <button type="button" id="closeBtn">✕ Close</button>
+        <button type="button" id="homeBtn" class="warn">⌂ Back to Start</button>
+      </div>
+    </div>
+    <div id="note" class="note hide"></div>
+    <div class="cardwrap"><div class="fcard" id="card"></div></div>
+    <div class="nav" id="nav">
+      <button class="btn" id="prevBtn" type="button">◀ Prev</button>
+      <button class="btn" id="againBtn" type="button">🔁 Hear it again</button>
+      <button class="btn y" id="deepBtn" type="button">🔍 Dig Deeper</button>
+      <button class="btn" id="nextBtn" type="button">Next ▶</button>
+    </div>
+    <div class="dots" id="dots"></div>
+    <div id="reportBox"></div>
+  </section>
+
+  <section id="printSheet"></section>
+  <footer>Every fact is checked against strong sources before it's shown. If we can't confirm it, we don't use it.</footer>
+</div>
+
+<script>
+/* ================= data ================= */
+const HOSTS = {
+  max:  { name:"Max", init:"M", c:"var(--max)", hex:"#e4572e", mic:"🎤", role:"Can't believe it. Every time." },
+  dot:  { name:"Dot", init:"D", c:"var(--dot)", hex:"#17a398", mic:"🎙", role:"The skeptic. Hard to impress." },
+  prof: { name:"The Professor", init:"P", c:"var(--prof)", hex:"#6a4c93", mic:"📻", role:"Explains the why." }
+};
+const ROTA = ["max", "dot", "prof"];
+const FLAVORS = {
+  useless:       { name:"Useless but Interesting", color:"#c98f00", emo:"🤷" },
+  extraordinary: { name:"Extraordinary", color:"#2e6fdb", emo:"🚀" },
+  incredible:    { name:"Incredible", color:"#d7263d", emo:"🤯" },
+  unusual:       { name:"Unusual", color:"#17a398", emo:"🦄" },
+  weird:         { name:"Weird", color:"#6a4c93", emo:"👽" },
+  true:          { name:"True", color:"#2f9e44", emo:"✅" }
+};
+const LEADS = {
+  useless: ["Here's one you'll never need.", "Totally useless, totally great.", "File this under useless."],
+  extraordinary: ["This one's extraordinary.", "Get ready for an extraordinary one."],
+  incredible: ["You won't believe this one.", "Here's an incredible one."],
+  unusual: ["Here's an unusual one.", "Now for something unusual."],
+  weird: ["Okay, this one's weird.", "Here's a weird one."],
+  true: ["Here's a fact most people get wrong.", "True story."]
+};
+const CATS = [
+  ["🐙","Animals"],["🫀","Human Body"],["🪐","Space"],["🌊","Ocean"],["🦖","Dinosaurs"],
+  ["🌿","Plants & Nature"],["⛈️","Weather"],["🔬","Science"],["💡","Inventions"],["🧦","Everyday Things"],
+  ["🍕","Food & Drink"],["🏛️","History"],["📅","On This Day"],["🗺️","Geography & Places"],["🔤","Words & Language"],
+  ["💰","Money"],["🏈","Sports"],["🎵","Music"],["🎬","Movies & TV"],["🚗","Cars & Transportation"]
+];
+const BANNER = ["Octopus","Platypus","Saturn","Axolotl","Tardigrade","Lightning","Eiffel Tower","Honey"];
+const BANNER_EMO = ["🐙","🦆","🪐","🦎","🔬","⚡","🗼","🍯"];
+const ANGLES = [
+  "Records, extremes, big numbers, and how it actually works.",
+  "Origins and history, odd true stories, and popular myths that turn out to be wrong."
+];
+
+/* ================= state ================= */
+const S = {
+  topic:"", label:"", cat:"", flavors:new Set(), level:"family", count:8, voice:true,
+  facts:[], idx:0, pending:0, note:"", run:0, playing:false, paused:false, started:false, ended:false,
+  show:0, report:null, reportFor:-1, qa:[], audio:null, utter:null, ttsOk:true
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ================= header bits ================= */
+$("tickText").innerHTML = Array(2).fill(["Useless but interesting","Extraordinary","Incredible","Unusual","Weird","True"].map(w => `<span>★ ${w}</span>`).join("")).join("");
+function hostsHtml(){
+  $("hosts").innerHTML = ROTA.map(k => { const h = HOSTS[k]; return `<div class="host" id="h_${k}" style="--c:${h.c}"><div class="face">${h.init}<i>${h.mic}</i></div><div><b>${h.name}</b><small>${h.role}</small></div><span class="air">ON AIR</span></div>`; }).join("");
+}
+hostsHtml();
+function onAir(k){ ROTA.forEach(x => $("h_" + x).classList.toggle("on", x === k)); }
+
+/* ================= photos (Wikipedia / Wikimedia Commons, credited, no saving) ================= */
+const stripTags = h => { const d = document.createElement("div"); d.innerHTML = h || ""; return (d.textContent || "").replace(/\s+/g, " ").trim(); };
+const photoMem = {};
+function wikiPhoto(title, width){
+  if (!title) return Promise.resolve(null);
+  const key = title + "|" + (width || 900);
+  if (photoMem[key]) return photoMem[key];
+  return photoMem[key] = (async () => {
+    try {
+      const j = await (await fetch("https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages&piprop=name&titles=" + encodeURIComponent(title))).json();
+      const page = Object.values((j.query && j.query.pages) || {})[0];
+      if (!page || !page.pageimage) return null;
+      const cj = await (await fetch("https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=" + (width || 900) + "&titles=" + encodeURIComponent("File:" + page.pageimage))).json();
+      const cp = Object.values((cj.query && cj.query.pages) || {})[0];
+      if (!cp || cp.missing !== undefined || !cp.imageinfo) return null;   // free (Commons) images only
+      const ii = cp.imageinfo[0], md = ii.extmetadata || {};
+      return { url: ii.thumburl || ii.url, page: ii.descriptionurl, artist: stripTags(md.Artist && md.Artist.value).slice(0, 60) || "Unknown", license: stripTags(md.LicenseShortName && md.LicenseShortName.value) || "" };
+    } catch (e) { return null; }
+  })();
+}
+(function banner(){
+  const b = $("banner"), first = b.firstChild;
+  BANNER.forEach((t, i) => {
+    const d = document.createElement("div"); d.className = "tile"; d.textContent = BANNER_EMO[i];
+    b.insertBefore(d, first);
+    wikiPhoto(t, 400).then(p => { if (p) { d.style.backgroundImage = `url("${p.url}")`; d.textContent = ""; } });
+  });
+  const c = document.createElement("div"); c.className = "credit"; c.textContent = "Photos: Wikimedia Commons"; b.appendChild(c);
+})();
+
+/* ================= setup ================= */
+function todayLabel(){ return new Date().toLocaleDateString("en-US", { month:"long", day:"numeric" }); }
+$("cats").innerHTML = CATS.map(([e, n], i) => `<button class="cat" type="button" data-i="${i}"><em>${e}</em>${esc(n)}</button>`).join("");
+$("cats").addEventListener("click", e => {
+  const b = e.target.closest(".cat"); if (!b) return;
+  const n = CATS[+b.dataset.i][1];
+  S.cat = S.cat === n ? "" : n;
+  document.querySelectorAll(".cat").forEach(x => x.classList.toggle("sel", CATS[+x.dataset.i][1] === S.cat));
+  if (S.cat) $("topicIn").value = "";
+});
+$("topicIn").addEventListener("input", () => { if ($("topicIn").value.trim()) { S.cat = ""; document.querySelectorAll(".cat").forEach(x => x.classList.remove("sel")); } });
+$("topicIn").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+$("goBtn").onclick = go;
+
+function flavorsHtml(){
+  const mix = !S.flavors.size;
+  $("flavors").innerHTML = `<button type="button" class="chip mix ${mix ? "sel" : ""}" data-f="">★ Mix them all</button>` +
+    Object.entries(FLAVORS).map(([k, f]) => `<button type="button" class="chip ${S.flavors.has(k) ? "sel" : ""}" data-f="${k}">${f.emo} ${f.name}</button>`).join("");
+}
+flavorsHtml();
+$("flavors").addEventListener("click", e => {
+  const b = e.target.closest(".chip"); if (!b) return;
+  const f = b.dataset.f;
+  if (!f) S.flavors.clear(); else if (S.flavors.has(f)) S.flavors.delete(f); else S.flavors.add(f);
+  if (S.flavors.size === Object.keys(FLAVORS).length) S.flavors.clear();
+  flavorsHtml();
+});
+function seg(id, key, cast){
+  const el = $(id);
+  const paint = () => el.querySelectorAll("button").forEach(b => b.classList.toggle("sel", String(cast(b.dataset.v)) === String(S[key])));
+  el.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; S[key] = cast(b.dataset.v); paint(); });
+  paint();
+}
+seg("lvlSeg", "level", v => v);
+seg("cntSeg", "count", v => +v);
+seg("vocSeg", "voice", v => v === "1");
+
+/* ================= server calls ================= */
+async function post(url, body, ms){
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms || 110000);
+  try {
+    const r = await fetch(url, { method:"POST", headers:{ "content-type":"application/json" }, body: JSON.stringify(body), signal: ctl.signal });
+    let j = null; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) { const err = new Error((j && (j.message || j.error)) || ("HTTP " + r.status)); err.status = r.status; err.data = j; throw err; }
+    return j;
+  } finally { clearTimeout(t); }
+}
+function errMsg(e){
+  if (e && e.status === 402) return "This is a members feature. Join or log in to keep going.";
+  if (e && e.name === "AbortError") return "That took too long. Please try again.";
+  return (e && e.message && !/^HTTP/.test(e.message)) ? e.message : "Something went wrong. Please try again.";
+}
+
+/* ================= voices ================= */
+const audioMem = new Map();
+function getAudio(host, text){
+  const k = host + "|" + text;
+  if (audioMem.has(k)) return audioMem.get(k);
+  const p = post("/api/speak", { host, text }, 40000).then(j => j && j.audio ? "data:audio/mpeg;base64," + j.audio : null).catch(e => { if (e && e.status === 501) S.ttsOk = false; return null; });
+  audioMem.set(k, p);
+  return p;
+}
+let browserVoices = [];
+function loadVoices(){ try { browserVoices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)); } catch (e) {} }
+if ("speechSynthesis" in window) { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }
+function browserSay(host, text, run){
+  return new Promise(done => {
+    if (!("speechSynthesis" in window)) return done();
+    const u = new SpeechSynthesisUtterance(text);
+    const i = ROTA.indexOf(host);
+    if (browserVoices.length) u.voice = browserVoices[i % browserVoices.length];
+    u.pitch = [1.15, 1.0, 0.85][i]; u.rate = [1.08, 1.0, 0.94][i];
+    u.onend = u.onerror = () => done();
+    S.utter = u; speechSynthesis.cancel(); speechSynthesis.speak(u);
+    const iv = setInterval(() => { if (run !== S.run) { clearInterval(iv); try { speechSynthesis.cancel(); } catch (e) {} done(); } }, 250);
+    u.addEventListener("end", () => clearInterval(iv));
+  });
+}
+async function say(host, text, run){
+  if (!S.voice || run !== S.run || !text) return;
+  onAir(host);
+  const src = S.ttsOk ? await getAudio(host, text) : null;
+  if (run !== S.run) return;
+  if (!src) { await browserSay(host, text, run); onAir(null); return; }
+  await new Promise(done => {
+    const a = new Audio(src); S.audio = a;
+    a.onended = a.onerror = () => done();
+    a.play().catch(() => done());
+    const iv = setInterval(() => { if (run !== S.run) { clearInterval(iv); a.pause(); done(); } }, 200);
+    a.addEventListener("ended", () => clearInterval(iv));
+  });
+  if (run === S.run) onAir(null);
+}
+function hush(){
+  S.run++;
+  if (S.audio) { try { S.audio.pause(); } catch (e) {} S.audio = null; }
+  try { speechSynthesis.cancel(); } catch (e) {}
+  S.paused = false; S.playing = false; onAir(null); paintCtl();
+}
+function readerOf(i){ const f = S.facts[i]; let r = ROTA[i % 3]; if (f && r === f.by) r = ROTA[(i + 2) % 3]; return r; }
+function lines(i){
+  const f = S.facts[i];
+  return [
+    { host: readerOf(i), text: `${pick(LEADS[f.flavor] || LEADS.true)} ${f.fact} ${f.explain}` },
+    { host: f.by, text: f.comment }
+  ];
+}
+function prefetch(i){ if (!S.voice || !S.ttsOk || !S.facts[i]) return; lines(i).forEach(l => getAudio(l.host, l.text)); }
+
+/* ================= the show ================= */
+function go(){
+  const typed = $("topicIn").value.trim();
+  if (!typed && !S.cat) return showErr("Pick a category or type a topic first.");
+  hideErr();
+  if (S.cat === "On This Day" && !typed) { S.label = "On This Day: " + todayLabel(); S.topic = `interesting things that happened on ${todayLabel()} in different years throughout history`; }
+  else { S.label = typed || S.cat; S.topic = typed || S.cat; }
+  startShow(true);
+}
+function showErr(m){ $("setupErr").textContent = m; $("setupErr").classList.remove("hide"); }
+function hideErr(){ $("setupErr").classList.add("hide"); }
+
+function startShow(fresh){
+  hush();
+  S.facts = fresh ? [] : S.facts; S.idx = fresh ? 0 : S.facts.length; S.note = ""; S.ended = false; S.started = false;
+  closeReport();
+  $("setup").classList.add("hide"); $("studio").classList.remove("hide"); $("resumeRow").classList.add("hide");
+  $("showTitle").textContent = S.label;
+  paintNote();
+  const run = S.run;
+  S.show++; S.startCount = S.facts.length; S.target = S.facts.length + S.count;
+  S.playing = S.voice;
+  paintLoading();
+  fetchFacts(S.show);
+  showLoop(run, fresh);
+  scrollTop();
+}
+function fetchFacts(show){
+  const total = S.count, half = total / 2;
+  const startAt = S.facts.length;
+  const seen = S.facts.map(f => f.fact);
+  S.pending = 2;
+  [0, 1].forEach(b => {
+    const base = startAt + b * half;
+    const hosts = Array.from({ length: half }, (_, k) => ROTA[(base + k + 1) % 3]);
+    post("/api/facts", { mode:"facts", topic:S.topic, category:S.cat, flavors:[...S.flavors], count:half, level:S.level, exclude:seen, angle:ANGLES[b], hosts }, 115000)
+      .then(j => {
+        if (show !== S.show) return;
+        if (!j || j.ok === false) { S.note = (j && j.note) || "Let's try a different topic."; S.declined = true; return; }
+        (j.facts || []).forEach((f, k) => {
+          if (S.facts.some(x => similar(x.fact, f.fact))) return;
+          f.by = hosts[k] || ROTA[(S.facts.length + 1) % 3]; f.topic = S.label;
+          S.facts.push(f);
+        });
+        if (!j.enough) S.short = true;
+      })
+      .catch(e => { S.fail = errMsg(e); })
+      .finally(() => { if (show !== S.show) return; S.pending--; paintDots(); if (!S.pending) finishFetch(); if (S.facts.length && !S.started) firstCard(); });
+  });
+}
+function similar(a, b){
+  const w = t => String(t).toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter(x => x.length > 3);
+  const A = new Set(w(a)), B = w(b); if (A.size < 3 || !B.length) return false;
+  let hit = 0; B.forEach(x => { if (A.has(x)) hit++; }); return hit / Math.min(A.size, B.length) >= 0.7;
+}
+function finishFetch(){
+  const got = S.facts.length;
+  if (S.declined && !got) { backToSetup(); showErr(S.note); S.declined = false; return; }
+  if (!got) { paintCard(); S.note = S.fail || `We couldn't confirm any solid facts about "${S.label}". Try a broader topic.`; paintNote(); S.fail = ""; return; }
+  if (S.short || got < S.target) S.note = `We could only confirm ${got - S.startCount} solid fact${got - S.startCount === 1 ? "" : "s"} about "${S.label}" this round. Rather than make any up, that's where we stop.`;
+  S.short = false; S.declined = false; S.fail = "";
+  paintNote(); paintDots();
+}
+function firstCard(){ S.started = true; paintCard(); paintDots(); }
+
+async function showLoop(run, fresh){
+  if (S.voice && fresh) await say("max", `Welcome to Just the Facts! I'm Max, here with Dot and the Professor. Today's topic: ${S.label}. Let's roll!`, run);
+  else if (S.voice) await say("dot", `More facts about ${S.label}? Coming right up.`, run);
+  while (run === S.run && !S.facts[S.idx] && S.pending) await sleep(300);
+  if (run !== S.run) return;
+  if (!S.facts[S.idx]) { paintCard(); return; }
+  if (!S.started) firstCard();
+  playFrom(S.idx);
+}
+async function playFrom(i){
+  hush();
+  const run = S.run;
+  S.idx = i; S.ended = false; S.playing = !!S.voice; paintCard(); paintDots();
+  if (!S.voice) return;
+  paintCtl();
+  while (run === S.run) {
+    const f = S.facts[S.idx]; if (!f) break;
+    prefetch(S.idx + 1);
+    const [a, b] = lines(S.idx);
+    await say(a.host, a.text, run);
+    if (run !== S.run) return;
+    showBubble(true);
+    await say(b.host, b.text, run);
+    if (run !== S.run) return;
+    await sleep(900);
+    while (run === S.run && !S.facts[S.idx + 1] && S.pending) await sleep(300);
+    if (run !== S.run) return;
+    if (!S.facts[S.idx + 1]) break;
+    S.idx++; paintCard(); paintDots();
+  }
+  if (run !== S.run) return;
+  S.playing = false; paintCtl();
+  endShow(run);
+}
+async function endShow(run){
+  S.ended = true; paintCard(); paintDots();
+  if (!S.voice) return;
+  const got = S.facts.length - S.startCount;
+  const extra = got < S.count ? ` This one was a narrow topic. We could only confirm ${got} solid facts, and we don't make things up.` : "";
+  await say("prof", `And those are the facts!${extra} Tap Dig Deeper on any card for the full story.`, run);
+}
+
+/* ================= painting ================= */
+function scrollTop(){ try { $("app").scrollIntoView({ behavior:"smooth", block:"start" }); } catch (e) {} }
+function paintNote(){ $("note").textContent = S.note; $("note").classList.toggle("hide", !S.note); }
+const LOADMSG = ["Checking the facts…", "Throwing out the fake ones…", "Dot is not convinced yet…", "Max can't believe it…", "The Professor is reading the fine print…", "Stamping the true ones…"];
+let loadTimer = null;
+function paintLoading(){
+  $("card").innerHTML = `<div class="loading"><div class="stampy">CHECKING</div><div class="big" id="lmsg">${LOADMSG[0]}</div><div class="small">Every fact is checked against strong sources. Good facts take a few seconds.</div></div>`;
+  let k = 0; clearInterval(loadTimer);
+  loadTimer = setInterval(() => { const m = $("lmsg"); if (!m) return clearInterval(loadTimer); m.textContent = LOADMSG[++k % LOADMSG.length]; }, 2600);
+  paintNav();
+}
+function paintCard(){
+  clearInterval(loadTimer);
+  const f = S.facts[S.idx];
+  if (S.ended && !S.facts[S.idx + 1]) return paintEnd();
+  if (!f) {
+    if (S.pending) return paintLoading();
+    $("card").innerHTML = `<div class="endcard"><h3>No facts this time</h3><p>We only show facts we can confirm with strong sources.</p><div class="nav"><button class="btn y" type="button" onclick="backToSetup()">Try another topic</button></div></div>`;
+    return paintNav();
+  }
+  const fl = FLAVORS[f.flavor] || FLAVORS.true, h = HOSTS[f.by] || HOSTS.prof;
+  $("card").style.setProperty("--fc", fl.color + "33");
+  $("card").innerHTML = `
+    <div class="pic" id="pic"><div class="emo">${fl.emo}</div></div>
+    <div class="body">
+      <div class="num">FACT ${S.idx + 1} OF ${Math.max(S.facts.length, S.ended || !S.pending ? S.facts.length : S.target)}</div>
+      <div class="stamp" style="--sc:${fl.color}">${esc(fl.name)}</div>
+      <div class="thefact">${esc(f.fact)}</div>
+      <p class="explain"><b>HOW CAN THAT BE?</b>${esc(f.explain)}</p>
+      <div class="bubble ${S.voice && S.playing ? "" : "show"}" id="bubble" style="--c:${h.c}"><div class="face">${h.init}</div><p><small>${esc(h.name)}</small>${esc(f.comment)}</p></div>
+      <div class="src"><span class="true">TRUE ✓</span>Checked: ${f.sources.map((s, i) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>
+    </div>`;
+  if (f.wiki) wikiPhoto(f.wiki).then(p => {
+    const box = $("pic"); if (!p || !box || S.facts[S.idx] !== f) return;
+    box.innerHTML = `<img src="${esc(p.url)}" alt="${esc(f.wiki)}"><div class="pc">Photo: ${esc(p.artist)}${p.license ? ", " + esc(p.license) : ""} · <a href="${esc(p.page)}" target="_blank" rel="noopener">Wikimedia Commons</a></div>`;
+  });
+  paintNav();
+}
+function showBubble(on){ const b = $("bubble"); if (b) b.classList.toggle("show", on); }
+function paintEnd(){
+  const got = S.facts.length;
+  $("card").innerHTML = `<div class="endcard"><h3>THAT'S THE FACTS!</h3>
+    <p>${got} checked fact${got === 1 ? "" : "s"} about <b>${esc(S.label)}</b>. Tap any number below to revisit one.</p>
+    <div class="nav">
+      <button class="btn r" type="button" id="moreBtn">➕ More facts on this topic</button>
+      <button class="btn y" type="button" id="newBtn">🎲 New topic</button>
+      <button class="btn" type="button" id="printBtn">🖨 Print fact sheet</button>
+    </div></div>`;
+  $("moreBtn").onclick = () => startShow(false);
+  $("newBtn").onclick = () => backToSetup(true);
+  $("printBtn").onclick = printSheet;
+  paintNav();
+}
+function paintNav(){
+  const has = !!S.facts[S.idx] && !(S.ended && !S.facts[S.idx + 1] && document.querySelector(".endcard"));
+  $("prevBtn").disabled = S.idx <= 0 && !document.querySelector(".endcard");
+  $("nextBtn").disabled = !has;
+  $("againBtn").disabled = !has || !S.voice;
+  $("deepBtn").disabled = !has;
+  paintCtl();
+}
+function paintDots(){
+  const shown = S.facts.length, waiting = S.pending ? Math.max(0, S.target - shown) : 0;
+  const onEnd = !!document.querySelector(".endcard");
+  $("dots").innerHTML = S.facts.map((f, i) => `<button type="button" data-i="${i}" class="${i === S.idx && !onEnd ? "cur" : ""}" title="${esc(f.fact)}">${i + 1}</button>`).join("") +
+    Array.from({ length: waiting }, () => `<button type="button" class="wait" disabled>…</button>`).join("");
+}
+$("dots").addEventListener("click", e => { const b = e.target.closest("button[data-i]"); if (!b) return; closeReport(); goTo(+b.dataset.i); });
+function goTo(i){ if (!S.facts[i]) return; S.ended = false; if (S.voice) playFrom(i); else { hush(); S.idx = i; paintCard(); paintDots(); } }
+function paintCtl(){
+  $("pauseBtn").textContent = S.paused ? "▶ Resume" : "⏸ Pause";
+  $("pauseBtn").disabled = !S.voice;
+  $("voiceBtn").textContent = S.voice ? "🔊 Voices on" : "🔇 Voices off";
+  $("voiceBtn").classList.toggle("on", S.voice);
+}
+
+/* ================= controls ================= */
+$("prevBtn").onclick = () => { closeReport(); if (document.querySelector(".endcard")) return goTo(S.facts.length - 1); goTo(S.idx - 1); };
+$("nextBtn").onclick = () => { closeReport(); if (S.facts[S.idx + 1]) goTo(S.idx + 1); else { hush(); S.ended = true; paintCard(); paintDots(); } };
+$("againBtn").onclick = () => { closeReport(); const i = S.idx; hush(); const run = S.run; (async () => { const [a, b] = lines(i); showBubble(false); await say(a.host, a.text, run); if (run !== S.run) return; showBubble(true); await say(b.host, b.text, run); })(); };
+$("deepBtn").onclick = () => openReport(S.idx);
+$("pauseBtn").onclick = () => {
+  if (!S.voice) return;
+  if (S.paused) { S.paused = false; if (S.audio) S.audio.play().catch(() => {}); try { speechSynthesis.resume(); } catch (e) {} }
+  else { S.paused = true; if (S.audio) S.audio.pause(); try { speechSynthesis.pause(); } catch (e) {} }
+  paintCtl();
+};
+$("stopBtn").onclick = () => { hush(); showBubble(true); };
+$("restartBtn").onclick = () => { closeReport(); if (S.facts.length) { S.ended = false; goTo(0); } };
+$("voiceBtn").onclick = () => { S.voice = !S.voice; if (!S.voice) { hush(); showBubble(true); } paintCtl(); paintNav(); };
+$("closeBtn").onclick = () => { if (S.reportFor >= 0) return closeReport(); hush(); $("studio").classList.add("hide"); $("setup").classList.remove("hide"); $("resumeRow").classList.toggle("hide", !S.facts.length); };
+$("resumeBtn").onclick = () => { $("setup").classList.add("hide"); $("studio").classList.remove("hide"); paintCard(); paintDots(); };
+$("homeBtn").onclick = () => backToSetup(true);
+function backToSetup(reset){
+  hush(); closeReport();
+  if (reset) S.show++;
+  if (reset) { S.facts = []; S.idx = 0; S.note = ""; S.cat = ""; $("topicIn").value = ""; document.querySelectorAll(".cat").forEach(x => x.classList.remove("sel")); paintNote(); }
+  $("studio").classList.add("hide"); $("setup").classList.remove("hide");
+  $("resumeRow").classList.toggle("hide", !S.facts.length);
+  scrollTop();
+}
+
+/* ================= Dig Deeper report ================= */
+function closeReport(){ S.reportFor = -1; S.report = null; S.qa = []; $("reportBox").innerHTML = ""; }
+async function openReport(i){
+  const f = S.facts[i]; if (!f) return;
+  hush(); showBubble(true);
+  S.reportFor = i; S.report = null; S.qa = [];
+  $("reportBox").innerHTML = `<div class="report" style="position:relative"><span class="spin"></span><b>The Professor is digging deeper…</b><div class="small">Checking more sources for the full story. This can take up to a minute.</div></div>`;
+  $("reportBox").scrollIntoView({ behavior:"smooth", block:"start" });
+  try {
+    const j = await post("/api/facts", { mode:"deeper", fact:f, topic:S.label, level:S.level });
+    if (S.reportFor !== i) return;
+    if (!j || !j.ok) { $("reportBox").innerHTML = `<div class="report"><p>${esc((j && j.note) || "We couldn't build that report right now.")}</p></div>`; return; }
+    S.report = j; paintReport();
+  } catch (e) { if (S.reportFor === i) $("reportBox").innerHTML = `<div class="report"><p>${esc(errMsg(e))}</p></div>`; }
+}
+function chipRow(list, cls){ return `<div class="chips">${list.map(q => `<button type="button" class="chip ${cls}" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>`; }
+function paintReport(){
+  const r = S.report; if (!r) return;
+  $("reportBox").innerHTML = `<div class="report" style="position:relative">
+    <button class="x" type="button" id="rClose" aria-label="Close report">✕</button>
+    <div class="label">Dig Deeper · Fact ${S.reportFor + 1}</div>
+    <h3>${esc(r.title || "The full story")}</h3>
+    ${r.sections.map(s => `<h4 class="${/correction/i.test(s.head) ? "fix" : ""}">${esc(s.head)}</h4><p>${esc(s.text)}</p>`).join("")}
+    <div class="src" style="margin-top:12px"><span class="true">CHECKED</span>${r.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>
+    ${r.clarify ? `<div class="label">Quick question for you</div><p><b>${esc(r.clarify.question)}</b></p>${chipRow(r.clarify.choices || [], "cl")}` : ""}
+    <div class="label">Ask about this fact</div>
+    ${r.next_questions && r.next_questions.length ? chipRow(r.next_questions, "nq") : ""}
+    <div id="qaList"></div>
+    <div class="inrow" style="margin-top:10px"><input type="text" id="qIn" maxlength="400" aria-label="Your question"><button class="btn y" type="button" id="qGo">Ask</button></div>
+    <div class="ex">Example: How did anyone figure that out?</div>
+    <div class="eyes">
+      <b>👀 Want another set of AI eyes?</b>
+      <div class="small">Copy this report into another AI (ChatGPT, Gemini, any one you like), then paste its reply below. We'll check where they agree and where they don't.</div>
+      <div class="nav" style="justify-content:flex-start;margin:10px 0"><button class="btn" type="button" id="copyBtn">📋 Copy report for another AI</button></div>
+      <textarea id="otherIn" aria-label="Paste the other AI's reply"></textarea>
+      <div class="ex">Paste the other AI's full reply in the box above.</div>
+      <div class="nav" style="justify-content:flex-start"><button class="btn y" type="button" id="cmpBtn">Compare the answers</button></div>
+      <div id="cmpOut"></div>
+    </div>
+  </div>`;
+  paintQA();
+  $("rClose").onclick = closeReport;
+  $("qGo").onclick = () => ask($("qIn").value);
+  $("qIn").onkeydown = e => { if (e.key === "Enter") ask($("qIn").value); };
+  $("reportBox").querySelectorAll(".chip.nq,.chip.cl").forEach(b => b.onclick = () => ask(b.classList.contains("cl") ? `${r.clarify.question} ${b.dataset.q}` : b.dataset.q));
+  $("copyBtn").onclick = copyForAI;
+  $("cmpBtn").onclick = compare;
+}
+function paintQA(){
+  const el = $("qaList"); if (!el) return;
+  el.innerHTML = S.qa.map((x, k) => `<div class="qa"><b>Q: ${esc(x.q)}</b>${x.a == null ? `<span class="spin"></span>Checking…` : `<p>${esc(x.a)}</p>${x.sources && x.sources.length ? `<div class="small">Sources: ${x.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>` : ""}${x.clarify ? `<p style="margin-top:6px"><b>${esc(x.clarify.question)}</b></p><div class="chips">${(x.clarify.choices || []).map(c => `<button type="button" class="chip qc" data-k="${k}" data-q="${esc(c)}">${esc(c)}</button>`).join("")}</div>` : ""}`}</div>`).join("");
+  el.querySelectorAll(".chip.qc").forEach(b => b.onclick = () => { const x = S.qa[+b.dataset.k]; ask(`${x.clarify.question} ${b.dataset.q}`); });
+}
+async function ask(q){
+  q = String(q || "").trim(); if (!q || S.reportFor < 0) return;
+  const i = S.reportFor, f = S.facts[i];
+  const item = { q, a: null }; S.qa.push(item); paintQA();
+  if ($("qIn")) $("qIn").value = "";
+  try {
+    const j = await post("/api/facts", { mode:"ask", fact:f, topic:S.label, report:S.report, question:q, history:S.qa.filter(x => x.a != null).map(x => ({ q:x.q, a:x.a })), level:S.level });
+    item.a = j.answer; item.sources = j.sources || []; item.clarify = j.clarify;
+  } catch (e) { item.a = errMsg(e); }
+  if (S.reportFor === i) paintQA();
+}
+function reportPlain(){
+  const f = S.facts[S.reportFor], r = S.report;
+  return `Please fact-check and expand on this. Tell me anything that's wrong, missing, or worth adding.\n\nFACT: ${f.fact}\nWHY: ${f.explain}\n\n${r.title}\n\n` + r.sections.map(s => `${s.head}\n${s.text}`).join("\n\n") + `\n\nSources: ` + r.sources.map(s => s.url).join(", ");
+}
+async function copyForAI(){
+  const t = reportPlain(), b = $("copyBtn");
+  try { await navigator.clipboard.writeText(t); b.textContent = "✓ Copied! Now paste it into another AI"; }
+  catch (e) { const ta = $("otherIn"); ta.value = t; ta.select(); b.textContent = "Select-all and copy from the box, then clear it"; }
+}
+async function compare(){
+  const other = $("otherIn").value.trim(); const out = $("cmpOut");
+  if (other.length < 40) { out.innerHTML = `<p class="small">Paste the other AI's full reply first.</p>`; return; }
+  out.innerHTML = `<p><span class="spin"></span>Comparing and checking sources…</p>`;
+  try {
+    const j = await post("/api/facts", { mode:"compare", fact:S.facts[S.reportFor], topic:S.label, report:S.report, other, level:S.level });
+    const tag = { matches:"✅ They agree", partly:"🟡 Mostly agree", differs:"🔴 They disagree" }[j.agreement];
+    out.innerHTML = `<h4>${tag}</h4><p>${esc(j.summary)}</p>${j.differences.length ? `<div class="label">Differences</div><ul>${j.differences.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}${j.new_info.length ? `<div class="label">Worth adding</div><ul>${j.new_info.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}${j.sources.length ? `<div class="small">Checked: ${j.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>` : ""}`;
+  } catch (e) { out.innerHTML = `<p>${esc(errMsg(e))}</p>`; }
+}
+
+/* ================= print ================= */
+function printSheet(){
+  $("printSheet").innerHTML = `<h1>JUST THE FACTS: ${esc(S.label)}</h1><p>Useless but interesting. Extraordinary. Incredible. Unusual. Weird. True. · nusparklearnwow.com</p>` +
+    S.facts.map((f, i) => `<div class="pf"><b>${i + 1}. ${esc(f.fact)}</b><div>${esc(f.explain)}</div><div style="font-size:11px;margin-top:4px">${esc((FLAVORS[f.flavor] || FLAVORS.true).name)} · Source: ${esc(f.sources[0] ? f.sources[0].title : "")}</div></div>`).join("");
+  window.print();
+}
+
+/* ================= fit the page frame ================= */
+(function fit(){
+  if (window.parent === window || !("ResizeObserver" in window)) return;
+  let last = 0;
+  new ResizeObserver(() => { const h = Math.ceil(document.documentElement.scrollHeight); if (Math.abs(h - last) > 4) { last = h; try { window.parent.postMessage({ type:"lwToolHeight", height:h }, "*"); } catch (e) {} } }).observe(document.body);
+})();
+paintCtl();
+</script>
+</body>
+</html>
