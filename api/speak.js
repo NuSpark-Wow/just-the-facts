@@ -6,7 +6,7 @@
 const env = k => process.env[k];
 const VOICES = {
   max: env("VOICE_MAX") || "34lPwSZ54D8fWbX1aHzk",   // Guy - upbeat TV/radio announcer
-  dot: env("VOICE_DOT") || "r1KmysJdVYZjJCm4mL3b",   // Jessica - playful, bright, warm
+  dot: env("VOICE_DOT") || "cgSgspJ2msm6clMCkdW9",   // Jessica - playful, bright, warm (ElevenLabs default voice)
   prof: env("VOICE_PROF") || "pqHfZKP75CvOlQylNhV4"  // Bill - wise, mature, calm
 };
 // Each host gets their own delivery: lower stability = more expressive.
@@ -15,7 +15,19 @@ const STYLE = {
   dot: { stability: 0.32, style: 0.65, speed: 1.06 },
   prof: { stability: 0.6, style: 0.25, speed: 0.97 }
 };
+// If a chosen voice ever fails (removed from the account, plan change), the host still talks with a backup voice.
+const BACKUP = { max: "bPMKpgEe88vKSwusXTMU", dot: "hpp4J3VqNfWAUOO0d1Us", prof: "pqHfZKP75CvOlQylNhV4" };
 const cache = new Map();
+async function tts(key, voiceId, text, st) {
+  return fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`, {
+    method: "POST",
+    headers: { "xi-api-key": key, "content-type": "application/json", accept: "audio/mpeg" },
+    body: JSON.stringify({
+      text, model_id: process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5",
+      voice_settings: { stability: st.stability, similarity_boost: 0.8, style: st.style, speed: st.speed, use_speaker_boost: true }
+    })
+  });
+}
 
 module.exports = async (req, res) => {
   if (!(await require("./_lwgate")(req, res, "just-the-facts"))) return;
@@ -24,13 +36,14 @@ module.exports = async (req, res) => {
   if (req.method === "GET") {
     const out = { api_key_set: !!key, voices: VOICES };
     if (key) {
-      try {
-        const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICES.prof}?output_format=mp3_22050_32`, {
-          method: "POST", headers: { "xi-api-key": key, "content-type": "application/json" },
-          body: JSON.stringify({ text: "Hi.", model_id: process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5" })
-        });
-        out.voice = r.ok ? "working" : `error ${r.status}: ${(await r.text()).slice(0, 200)}`;
-      } catch (e) { out.voice = "error: " + e.message; }
+      out.test = {};
+      for (const h of Object.keys(VOICES)) {
+        try {
+          const r = await tts(key, VOICES[h], "Hi.", STYLE[h]);
+          out.test[h] = r.ok ? "working" : `error ${r.status}: ${(await r.text()).slice(0, 160)}`;
+        } catch (e) { out.test[h] = "error: " + e.message; }
+      }
+      out.voice = Object.values(out.test).every(v => v === "working") ? "working" : "check test";
     }
     return res.json(out);
   }
@@ -44,14 +57,8 @@ module.exports = async (req, res) => {
   if (cache.has(ck)) return res.json(cache.get(ck));
   const st = STYLE[host];
   try {
-    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${VOICES[host]}?output_format=mp3_44100_128`, {
-      method: "POST",
-      headers: { "xi-api-key": key, "content-type": "application/json", accept: "audio/mpeg" },
-      body: JSON.stringify({
-        text, model_id: process.env.ELEVENLABS_MODEL || "eleven_flash_v2_5",
-        voice_settings: { stability: st.stability, similarity_boost: 0.8, style: st.style, speed: st.speed, use_speaker_boost: true }
-      })
-    });
+    let r = await tts(key, VOICES[host], text, st);
+    if (!r.ok && VOICES[host] !== BACKUP[host]) { console.error("voice", host, r.status, (await r.text()).slice(0, 200)); r = await tts(key, BACKUP[host], text, st); }
     if (!r.ok) return res.status(502).json({ error: "voice_failed" });
     const out = { audio: Buffer.from(await r.arrayBuffer()).toString("base64") };
     if (cache.size > 150) cache.clear();
