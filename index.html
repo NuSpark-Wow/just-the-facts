@@ -208,6 +208,11 @@ input[type=text]:focus,textarea:focus{outline:3px solid var(--mustard);outline-o
 .offer .nav{justify-content:flex-start;margin:8px 0 0}
 .myth{font-family:'Special Elite','Courier New',monospace;font-size:16px;color:var(--red);margin:26px 0 -18px}
 .myth s{color:#7a6f63}
+.jump{background:#fff;border:2px solid var(--ink);border-radius:12px;padding:12px 14px;margin:12px 0}
+.jump .inrow .btn{flex:none;box-shadow:2px 2px 0 var(--ink)}
+#micBtn.rec{background:var(--red);color:#fff;animation:blink 1s infinite}
+.jans{border-left:4px solid var(--purple);padding:8px 0 4px 12px;margin-top:10px}
+.jans p{margin:0 0 6px}
 .err{background:#fde8e8;border:2px solid var(--red);border-radius:10px;padding:10px 14px;margin:10px 0;font-weight:600}
 
 /* studio */
@@ -333,9 +338,11 @@ footer{margin-top:22px;text-align:center;font-size:12.5px;color:var(--muted)}
         <div class="inrow"><input type="text" id="subIn" maxlength="100" aria-label="Your own subtopic"></div>
         <div class="ex" id="subEx"></div>
       </div>
-      <div class="or">or type your own topic</div>
-      <div class="inrow"><input type="text" id="topicIn" maxlength="120" aria-label="Your topic" autocomplete="off"></div>
-      <div class="ex">Examples: honeybees, the Statue of Liberty, pizza, volcanoes, left-handed people, roller coasters</div>
+      <div id="ownTopic">
+        <div class="or">or type your own topic</div>
+        <div class="inrow"><input type="text" id="topicIn" maxlength="120" aria-label="Your topic" autocomplete="off"></div>
+        <div class="ex">Examples: honeybees, the Statue of Liberty, pizza, volcanoes, left-handed people, roller coasters</div>
+      </div>
     </div>
 
     <div class="step">
@@ -379,6 +386,18 @@ footer{margin-top:22px;text-align:center;font-size:12.5px;color:var(--muted)}
       <button class="btn r" id="findBtn" type="button">➕ Find More</button>
     </div>
     <div class="dots" id="dots"></div>
+    <div class="jump" id="jumpBox">
+      <div class="label" style="margin-top:0">✋ Jump in</div>
+      <div class="inrow"><input type="text" id="jumpIn" maxlength="300" aria-label="Ask a question or steer the show"><button class="btn" type="button" id="micBtn" aria-label="Talk instead of typing">🎤</button><button class="btn y" type="button" id="jumpGo">Go</button></div>
+      <div class="ex">Ask a question or steer the show. Examples: "just do Monopoly" or "did they ever make TV ads?"</div>
+      <div id="jumpOut"></div>
+    </div>
+    <div class="nav" id="actions">
+      <button class="btn" type="button" id="printBtn2">🖨 Print</button>
+      <button class="btn" type="button" id="dlBtn">⬇ Download</button>
+      <button class="btn" type="button" id="aiBtn">📋 Copy for another AI</button>
+    </div>
+    <div id="aiBox"></div>
     <div id="reportBox"></div>
   </section>
 
@@ -556,6 +575,7 @@ $("cats").addEventListener("click", e => {
 function paintCats(){
   document.querySelectorAll(".cat").forEach(x => x.classList.toggle("sel", CATS[+x.dataset.i][1] === S.cat));
   $("subBox").classList.toggle("hide", !S.cat);
+  $("ownTopic").classList.toggle("hide", !!S.cat);
   if (!S.cat) return;
   $("subTitle").textContent = S.cat === "On This Day" ? `On This Day (${todayLabel()}): pick an angle` : `Pick a subtopic in ${S.cat}`;
   $("subs").innerHTML = SUBS[S.cat].map(t => `<button type="button" class="chip sub ${S.sub === t ? "sel" : ""}" data-t="${esc(t)}">${esc(t)}</button>`).join("");
@@ -628,7 +648,7 @@ function browserSay(host, text, run){
     if (browserVoices.length) u.voice = browserVoices[i % browserVoices.length];
     u.pitch = [1.15, 1.0, 0.85][i]; u.rate = [1.08, 1.0, 0.94][i];
     u.onend = u.onerror = () => done();
-    S.utter = u; speechSynthesis.cancel(); speechSynthesis.speak(u);
+    S.utter = u; speechSynthesis.cancel(); setTimeout(() => { if (run === S.run) speechSynthesis.speak(u); }, 80);
     const iv = setInterval(() => { if (run !== S.run) { clearInterval(iv); try { speechSynthesis.cancel(); } catch (e) {} done(); } }, 250);
     u.addEventListener("end", () => clearInterval(iv));
   });
@@ -685,6 +705,7 @@ function go(){
   }
   else if (pickd) { S.label = pickd; S.topic = `${pickd} (${S.cat})`; }
   else { S.label = S.cat; S.topic = S.cat; }
+  S.showCat = typed ? "" : S.cat;
   startShow(true);
 }
 function showErr(m){ $("setupErr").textContent = m; $("setupErr").classList.remove("hide"); }
@@ -753,7 +774,8 @@ async function showLoop(run, fresh){
   const R = rota(), names = R.map(k => HOSTS[k].name);
   const with_ = names.length > 1 ? `, here with ${names.slice(1).join(" and ")}` : "";
   if (S.voice && fresh) await say(R[0], `Welcome to Just the Facts! I'm ${names[0]}${with_}. Today's topic: ${S.label}. Let's roll!`, run);
-  else if (S.voice) await say(R[R.length > 1 ? 1 : 0], `More facts about ${S.label}? Coming right up!`, run);
+  else if (S.voice) await say(R[R.length > 1 ? 1 : 0], S.steer ? `Switching gears! Let's do ${S.label}.` : `More facts about ${S.label}? Coming right up!`, run);
+  S.steer = false;
   while (run === S.run && !S.facts[S.idx] && S.pending) await sleep(300);
   if (run !== S.run) return;
   if (!S.facts[S.idx]) { paintCard(); return; }
@@ -864,6 +886,7 @@ function paintNav(){
   $("againBtn").disabled = !has || !S.voice;
   $("deepBtn").disabled = !has;
   $("findBtn").disabled = !S.facts.length || S.pending > 0;
+  ["printBtn2", "dlBtn", "aiBtn"].forEach(id => $(id).disabled = !S.facts.length);
   paintCtl();
 }
 function paintDots(){
@@ -998,11 +1021,136 @@ async function compare(){
 }
 
 /* ================= print ================= */
+function sheetHead(){
+  const cat = S.showCat && S.showCat !== S.label ? S.showCat : "";
+  return { title: "JUST THE FACTS", topic: S.label, cat, date: new Date().toLocaleDateString("en-US", { month:"long", day:"numeric", year:"numeric" }) };
+}
 function printSheet(){
-  $("printSheet").innerHTML = `<h1>JUST THE FACTS: ${esc(S.label)}</h1><p>Useless but interesting. Extraordinary. Incredible. Unusual. Weird. True. · nusparklearnwow.com</p>` +
-    S.facts.map((f, i) => `<div class="pf"><b>${i + 1}. ${esc(f.fact)}</b><div>${esc(f.explain)}</div><div style="font-size:11px;margin-top:4px">${esc((FLAVORS[f.flavor] || FL0).name)} · Source: ${esc(f.sources[0] ? f.sources[0].title : "")}</div></div>`).join("");
+  const h = sheetHead();
+  $("printSheet").innerHTML = `<h1>${h.title}</h1><p><b>Topic:</b> ${esc(h.topic)}${h.cat ? ` &nbsp;·&nbsp; <b>Category:</b> ${esc(h.cat)}` : ""} &nbsp;·&nbsp; ${esc(h.date)}</p><p style="font-size:12px">Useless but interesting. Extraordinary. Incredible. Unusual. Weird. True. · nusparklearnwow.com</p>` +
+    S.facts.map((f, i) => `<div class="pf"><b>${i + 1}. ${f.myth ? "MYTH: " + esc(f.myth) + " FACT: " : ""}${esc(f.fact)}</b><div>${esc(f.explain)}</div><div style="font-size:11px;margin-top:4px">${esc((FLAVORS[f.flavor] || FL0).name)} · Source: ${esc(f.sources[0] ? f.sources[0].title + " (" + f.sources[0].url + ")" : "")}</div></div>`).join("");
   window.print();
 }
+function sheetText(){
+  const h = sheetHead();
+  return `${h.title}\nTopic: ${h.topic}${h.cat ? "  |  Category: " + h.cat : ""}\n${h.date}\n\n` +
+    S.facts.map((f, i) => `${i + 1}. ${f.myth ? "MYTH: " + f.myth + " FACT: " : ""}${f.fact}\n   Why: ${f.explain}\n   Kind: ${(FLAVORS[f.flavor] || FL0).name}\n   Source: ${f.sources.map(s => s.url).join(", ")}`).join("\n\n");
+}
+$("printBtn2").onclick = printSheet;
+
+/* ================= download (PDF, with a plain-file backup) ================= */
+function loadPdfLib(){
+  if (window.jspdf) return Promise.resolve(window.jspdf);
+  return new Promise((ok, no) => { const sc = document.createElement("script"); sc.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"; sc.onload = () => window.jspdf ? ok(window.jspdf) : no(); sc.onerror = no; document.head.appendChild(sc); });
+}
+const fileName = ext => "just-the-facts-" + S.label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) + "." + ext;
+$("dlBtn").onclick = async () => {
+  const b = $("dlBtn"); b.textContent = "⬇ Making your file…";
+  try {
+    const { jsPDF } = await loadPdfLib(), doc = new jsPDF({ unit:"pt", format:"letter" }), h = sheetHead();
+    const W = doc.internal.pageSize.getWidth() - 100; let y = 60;
+    const line = (txt, size, bold, gap) => {
+      doc.setFont("helvetica", bold ? "bold" : "normal"); doc.setFontSize(size);
+      doc.splitTextToSize(String(txt), W).forEach(row => { if (y > 740) { doc.addPage(); y = 60; } doc.text(row, 50, y); y += size * 1.3; });
+      y += gap || 0;
+    };
+    line(h.title, 22, true, 4);
+    line(`Topic: ${h.topic}${h.cat ? "   |   Category: " + h.cat : ""}   |   ${h.date}`, 11, false, 2);
+    line("Useless but interesting. Extraordinary. Incredible. Unusual. Weird. True.  nusparklearnwow.com", 9, false, 14);
+    S.facts.forEach((f, i) => {
+      line(`${i + 1}. ${f.myth ? "MYTH: " + f.myth + "  FACT: " : ""}${f.fact}`, 13, true, 2);
+      line(f.explain, 11, false, 2);
+      line(`${(FLAVORS[f.flavor] || FL0).name}  ·  Source: ${f.sources[0] ? f.sources[0].title + " " + f.sources[0].url : ""}`, 8.5, false, 12);
+    });
+    doc.save(fileName("pdf"));
+  } catch (e) {
+    const blob = new Blob([sheetText()], { type:"text/plain" }), a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = fileName("txt"); document.body.appendChild(a); a.click(); a.remove();
+  }
+  b.textContent = "⬇ Download";
+};
+
+/* ================= copy the whole sheet for another AI ================= */
+$("aiBtn").onclick = () => {
+  const box = $("aiBox");
+  if (box.innerHTML) { box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="eyes" style="position:relative"><button class="x" type="button" id="aiClose" style="position:absolute;right:10px;top:6px;background:none;border:0;font-size:20px" aria-label="Close">✕</button>
+    <b>👀 Want another set of AI eyes on these facts?</b>
+    <div class="small">Copy the fact sheet into another AI (ChatGPT, Gemini, any one you like), then paste its reply below. We'll check where they agree and where they don't.</div>
+    <div class="nav" style="justify-content:flex-start;margin:10px 0"><button class="btn" type="button" id="aiCopy">📋 Copy the fact sheet</button></div>
+    <textarea id="aiOther" aria-label="Paste the other AI's reply"></textarea>
+    <div class="ex">Paste the other AI's full reply in the box above.</div>
+    <div class="nav" style="justify-content:flex-start"><button class="btn y" type="button" id="aiCmp">Compare the answers</button></div>
+    <div id="aiOut"></div></div>`;
+  $("aiClose").onclick = () => { box.innerHTML = ""; };
+  $("aiCopy").onclick = async () => {
+    const t = "Please fact-check these facts. Tell me anything that's wrong or overstated, and add any great facts on this topic that are missing.\n\n" + sheetText();
+    try { await navigator.clipboard.writeText(t); $("aiCopy").textContent = "✓ Copied! Now paste it into another AI"; }
+    catch (e) { const ta = $("aiOther"); ta.value = t; ta.select(); $("aiCopy").textContent = "Select-all and copy from the box, then clear it"; }
+  };
+  $("aiCmp").onclick = async () => {
+    const other = $("aiOther").value.trim(), out = $("aiOut");
+    if (other.length < 40) { out.innerHTML = `<p class="small">Paste the other AI's full reply first.</p>`; return; }
+    out.innerHTML = `<p><span class="spin"></span>Comparing and checking sources…</p>`;
+    try {
+      const j = await post("/api/facts", { mode:"compare", sheet:sheetText(), topic:S.label, other, level:S.level });
+      const tag = { matches:"✅ They agree", partly:"🟡 Mostly agree", differs:"🔴 They disagree" }[j.agreement];
+      out.innerHTML = `<h4>${tag}</h4><p>${esc(j.summary)}</p>${j.differences.length ? `<div class="label">Differences</div><ul>${j.differences.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}${j.new_info.length ? `<div class="label">Worth adding</div><ul>${j.new_info.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}${j.sources.length ? `<div class="small">Checked: ${j.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>` : ""}`;
+    } catch (e) { out.innerHTML = `<p>${esc(errMsg(e))}</p>`; }
+  };
+};
+
+/* ================= jump in: ask a question or steer the show ================= */
+let jumpWas = null;
+function pauseForJump(){
+  if (jumpWas === null) jumpWas = { playing: S.playing && S.voice, idx: S.idx };
+  hush(); showBubble(true);
+}
+$("jumpIn").addEventListener("focus", pauseForJump);
+$("jumpIn").addEventListener("keydown", e => { if (e.key === "Enter") jump(); });
+$("jumpGo").onclick = () => jump();
+async function jump(){
+  const text = $("jumpIn").value.trim(); if (!text || !S.facts.length) return;
+  pauseForJump();
+  const was = jumpWas || { playing:false, idx:S.idx }; jumpWas = null;
+  const out = $("jumpOut");
+  out.innerHTML = `<div class="jans"><span class="spin"></span>Thinking about "${esc(text)}"…</div>`;
+  try {
+    const j = await post("/api/facts", { mode:"jump", text, topic:S.topic, category:S.showCat, fact:S.facts[S.idx], level:S.level });
+    $("jumpIn").value = "";
+    if (j.kind === "steer") {
+      out.innerHTML = `<div class="jans"><b>Switching gears:</b> ${esc(j.label)}</div>`;
+      S.facts = S.facts.slice(0, S.idx + 1);
+      S.label = j.label; S.topic = j.topic; S.steer = true; S.offer = ""; S.note = "";
+      closeReport();
+      startShow(false);
+      setTimeout(() => { if ($("jumpOut").textContent.startsWith("Switching")) $("jumpOut").innerHTML = ""; }, 8000);
+      return;
+    }
+    const R = rota(), host = R.includes("prof") ? "prof" : R[0];
+    out.innerHTML = `<div class="jans"><b>Q: ${esc(text)}</b><p>${esc(j.answer)}</p><div id="jPic"></div>${j.sources && j.sources.length ? `<div class="small">Sources: ${j.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>` : ""}</div>`;
+    if (j.photo) findPhoto("", j.photo).then(p => { const el = $("jPic"); if (p && el) { el.className = "rpic"; el.innerHTML = photoHtml(p, j.photo); } });
+    const run = S.run;
+    if (S.voice) await say(host, j.answer, run);
+    if (run === S.run && was.playing && S.voice) { if (S.facts[was.idx + 1]) playFrom(was.idx + 1); }
+  } catch (e) { out.innerHTML = `<div class="jans">${esc(errMsg(e))}</div>`; }
+}
+// talk instead of typing (browsers that support it; the page embed needs allow="microphone")
+(function mic(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition, b = $("micBtn");
+  if (!SR) { b.classList.add("hide"); return; }
+  let rec = null;
+  b.onclick = () => {
+    if (rec) { rec.stop(); return; }
+    pauseForJump();
+    rec = new SR(); rec.lang = "en-US"; rec.interimResults = true; rec.maxAlternatives = 1;
+    b.classList.add("rec");
+    rec.onresult = e => { $("jumpIn").value = Array.from(e.results).map(r => r[0].transcript).join(" "); };
+    rec.onend = () => { b.classList.remove("rec"); rec = null; if ($("jumpIn").value.trim()) jump(); };
+    rec.onerror = () => { b.classList.remove("rec"); };
+    try { rec.start(); } catch (e) { b.classList.remove("rec"); rec = null; }
+  };
+})();
 
 /* ================= fit the page frame ================= */
 (function fit(){
