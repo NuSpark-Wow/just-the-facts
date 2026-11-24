@@ -144,7 +144,16 @@ h1,h2,h3{margin:0}
 @media(max-width:700px){.banner{grid-template-columns:repeat(4,1fr)}.banner .tile:nth-child(n+5){display:none}.banner .txt span,.banner .credit{display:none}.banner .txt b{font-size:17px}}
 
 /* hosts */
-.hosts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.hostlabel{font-family:'Archivo Black',Impact,sans-serif;font-size:17px;margin:0 0 8px}
+.hosts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.hosts.live{grid-template-columns:repeat(var(--n,3),1fr)}
+.host{cursor:pointer;text-align:left;font:inherit;color:inherit;position:relative}
+.host.pick:not(.sel){opacity:.45;filter:grayscale(.6)}
+.host.pick.sel{box-shadow:4px 4px 0 var(--c)}
+.host .tick{position:absolute;right:8px;top:6px;font-weight:800;color:var(--c);display:none}
+.host.pick.sel .tick{display:block}
+.host.ro .face{background:#fff;color:var(--ink)}
+@media(max-width:640px){.hosts{grid-template-columns:repeat(2,1fr)}.hostlabel{font-size:15px}}
 .host{background:var(--card);border:2px solid var(--ink);border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;transition:transform .2s,box-shadow .2s}
 .host .face{width:48px;height:48px;border-radius:50%;background:var(--c);color:#fff;display:grid;place-items:center;font-family:'Archivo Black',Impact,sans-serif;font-size:20px;flex:none;border:3px solid var(--ink);position:relative}
 .host .face i{position:absolute;right:-6px;bottom:-4px;font-style:normal;font-size:18px}
@@ -192,6 +201,13 @@ input[type=text]:focus,textarea:focus{outline:3px solid var(--mustard);outline-o
 .seg button.sel{background:var(--ink);color:#fff}
 .go{display:block;width:100%;margin-top:6px;background:var(--red);color:#fff;border:3px solid var(--ink);border-radius:14px;padding:16px;font-family:'Archivo Black',Impact,sans-serif;font-size:22px;letter-spacing:1px;box-shadow:5px 5px 0 var(--ink);transition:.1s}
 .go:active{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--ink)}
+.subbox{background:#fff8e1;border:2px solid var(--ink);border-radius:12px;padding:12px 14px;margin-top:12px}
+.subbox .label{margin-top:0}
+.chip.sub{font-size:13.5px;padding:7px 12px}
+.offer{background:#e9f7ef;border:3px solid var(--green);border-radius:12px;padding:12px 14px;margin-bottom:12px;font-weight:700}
+.offer .nav{justify-content:flex-start;margin:8px 0 0}
+.myth{font-family:'Special Elite','Courier New',monospace;font-size:16px;color:var(--red);margin:26px 0 -18px}
+.myth s{color:#7a6f63}
 .err{background:#fde8e8;border:2px solid var(--red);border-radius:10px;padding:10px 14px;margin:10px 0;font-weight:600}
 
 /* studio */
@@ -212,6 +228,12 @@ input[type=text]:focus,textarea:focus{outline:3px solid var(--mustard);outline-o
 .pic{position:relative;background:var(--fc,#ddd);min-height:240px;border-right:3px solid var(--ink)}
 @media(max-width:760px){.pic{border-right:0;border-bottom:3px solid var(--ink);min-height:220px}}
 .pic img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pic.nopic img,.pic.nopic .pc,.rpic.nopic{display:none}
+.rpic{position:relative;border:3px solid var(--ink);border-radius:8px;overflow:hidden;margin:6px 0 12px;max-width:560px;background:#eee}
+.rpic img{display:block;width:100%;max-height:340px;object-fit:cover}
+.rpic .pc{position:absolute;left:6px;bottom:6px;right:6px;font-size:10.5px;color:#fff;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px}
+.rpic .pc a{color:#fff}
+.qa .rpic{max-width:360px}
 .pic .emo{position:absolute;inset:0;display:grid;place-items:center;font-size:90px}
 .pic .pc{position:absolute;left:6px;bottom:6px;right:6px;font-size:10.5px;color:#fff;background:rgba(0,0,0,.55);padding:2px 6px;border-radius:4px}
 .pic .pc a{color:#fff}
@@ -294,6 +316,7 @@ footer{margin-top:22px;text-align:center;font-size:12.5px;color:var(--muted)}
     <div class="txt"><b>Facts you'll never need. And can't stop sharing.</b><span>Useless but interesting. Extraordinary. Incredible. Unusual. Weird. True.</span></div>
   </div>
 
+  <div class="hostlabel" id="hostLabel">Choose some AI Characters to Voice the Facts, or You can just read them</div>
   <div class="hosts" id="hosts"></div>
 
   <!-- ===== SETUP ===== -->
@@ -303,6 +326,13 @@ footer{margin-top:22px;text-align:center;font-size:12.5px;color:var(--muted)}
       <p class="sub">Tap a category, or type any topic you like.</p>
       <div class="cats" id="cats"></div>
       <div class="swipe">Swipe for more categories →</div>
+      <div id="subBox" class="subbox hide">
+        <div class="label" id="subTitle"></div>
+        <div class="chips" id="subs"></div>
+        <div class="ex" style="margin-top:10px">Or choose your own:</div>
+        <div class="inrow"><input type="text" id="subIn" maxlength="100" aria-label="Your own subtopic"></div>
+        <div class="ex" id="subEx"></div>
+      </div>
       <div class="or">or type your own topic</div>
       <div class="inrow"><input type="text" id="topicIn" maxlength="120" aria-label="Your topic" autocomplete="off"></div>
       <div class="ex">Examples: honeybees, the Statue of Liberty, pizza, volcanoes, left-handed people, roller coasters</div>
@@ -315,11 +345,9 @@ footer{margin-top:22px;text-align:center;font-size:12.5px;color:var(--muted)}
     </div>
 
     <div class="step">
-      <h2><b>3</b>Set up the show</h2>
+      <h2><b>3</b>Who's listening?</h2>
       <div class="opts">
-        <div class="opt"><label>Who's listening</label><div class="seg" id="lvlSeg"><button type="button" data-v="family">Family</button><button type="button" data-v="grown">Grown-ups</button></div></div>
-        <div class="opt"><label>How many facts</label><div class="seg" id="cntSeg"><button type="button" data-v="6">6</button><button type="button" data-v="8">8</button></div></div>
-        <div class="opt"><label>Host voices</label><div class="seg" id="vocSeg"><button type="button" data-v="1">On</button><button type="button" data-v="0">Off (read only)</button></div></div>
+        <div class="opt"><label>Writing style</label><div class="seg" id="lvlSeg"><button type="button" data-v="family">Family</button><button type="button" data-v="grown">Grown-ups</button></div></div>
       </div>
     </div>
 
@@ -348,6 +376,7 @@ footer{margin-top:22px;text-align:center;font-size:12.5px;color:var(--muted)}
       <button class="btn" id="againBtn" type="button">🔁 Hear it again</button>
       <button class="btn y" id="deepBtn" type="button">🔍 Dig Deeper</button>
       <button class="btn" id="nextBtn" type="button">Next ▶</button>
+      <button class="btn r" id="findBtn" type="button">➕ Find More</button>
     </div>
     <div class="dots" id="dots"></div>
     <div id="reportBox"></div>
@@ -371,24 +400,53 @@ const FLAVORS = {
   incredible:    { name:"Incredible", color:"#d7263d", emo:"🤯" },
   unusual:       { name:"Unusual", color:"#17a398", emo:"🦄" },
   weird:         { name:"Weird", color:"#6a4c93", emo:"👽" },
-  true:          { name:"True", color:"#2f9e44", emo:"✅" }
+  surprising:    { name:"Surprising", color:"#e4572e", emo:"😮" },
+  mindblowing:   { name:"Mind-Blowing", color:"#b5179e", emo:"💥" },
+  funny:         { name:"Funny", color:"#e67700", emo:"😂" },
+  littleknown:   { name:"Little-Known", color:"#495057", emo:"🔍" },
+  record:        { name:"Record-Breaking", color:"#a87900", emo:"🏆" },
+  mysterious:    { name:"Mysterious", color:"#3a0ca3", emo:"🌀" },
+  myth:          { name:"Myth-Busting", color:"#c92a2a", emo:"🚫" },
+  accidental:    { name:"Accidental Discoveries", color:"#2f9e44", emo:"🍀" }
 };
+const FL0 = FLAVORS.littleknown;
+// upbeat lead-ins, rotated so the same one never plays twice in a row
 const LEADS = {
-  useless: ["Here's one you'll never need.", "Totally useless, totally great.", "File this under useless."],
-  extraordinary: ["This one's extraordinary.", "Get ready for an extraordinary one."],
-  incredible: ["You won't believe this one.", "Here's an incredible one."],
-  unusual: ["Here's an unusual one.", "Now for something unusual."],
-  weird: ["Okay, this one's weird.", "Here's a weird one."],
-  true: ["Here's a fact most people get wrong.", "True story."]
+  max:  ["Check this fact out!", "Oh, you're gonna love this one!", "Wait till you hear this!", "Okay, get ready for this one!", "Here's a good one!", "Buckle up, this one's wild!"],
+  dot:  ["Here's an interesting one!", "Okay, this one surprised even me.", "You won't believe this, but it's true!", "Alright, try this one on for size!", "Ready? Here we go!", "Ooh, I love this one!"],
+  prof: ["Here's a fascinating one.", "Now this one is worth knowing.", "Consider this.", "Here's one I'm rather fond of.", "This one has a great story behind it."]
 };
 const CATS = [
-  ["🐙","Animals"],["🫀","Human Body"],["🪐","Space"],["🌊","Ocean"],["🦖","Dinosaurs"],
+  ["🐙","Animals"],["🫀","Human Body"],["🪐","Space"],["🌊","Ocean"],["🧸","Toys & Games"],
   ["🌿","Plants & Nature"],["⛈️","Weather"],["🔬","Science"],["💡","Inventions"],["🧦","Everyday Things"],
   ["🍕","Food & Drink"],["🏛️","History"],["📅","On This Day"],["🗺️","Geography & Places"],["🔤","Words & Language"],
-  ["💰","Money"],["🏈","Sports"],["🎵","Music"],["🎬","Movies & TV"],["🚗","Cars & Transportation"]
+  ["💻","Technology"],["🏈","Sports"],["🎵","Music"],["🎬","Movies & TV"],["🚗","Cars & Transportation"]
 ];
+const SUBS = {
+  "Animals": ["Octopuses","Sloths","Sharks","Penguins","Elephants","Owls","Honeybees","Ants","Cats","Dogs","Dolphins","Kangaroos","Frogs","Snakes","Butterflies","Crows","Giraffes","Platypuses","Tardigrades","Bats"],
+  "Human Body": ["The Brain","The Heart","Bones","Skin","Eyes","Sleep & Dreams","Taste & Smell","Teeth","Hair & Nails","Muscles","Blood","Hiccups & Sneezes","Digestion","Lungs & Breathing","Fingerprints","Memory","Yawning","Ears & Hearing","Twins","Left-Handedness"],
+  "Space": ["The Moon","The Sun","Mars","Jupiter","Saturn","Black Holes","Astronauts","The Space Station","Comets & Meteors","Galaxies","Stars","Space Food","Apollo Missions","Pluto","Venus","Exoplanets","Space Telescopes","Northern Lights","Rockets","Life in Space"],
+  "Ocean": ["The Deep Sea","Coral Reefs","Whales","Jellyfish","Shipwrecks","Tides & Waves","Sea Turtles","Seahorses","The Mariana Trench","Squid","Sea Otters","Icebergs","Pirates","Ocean Currents","Glowing Sea Creatures","Starfish","Lighthouses","Sharks' Senses","Why the Sea Is Salty","Submarines"],
+  "Toys & Games": ["LEGO","Board Games","Video Games","Rubik's Cube","Barbie","Teddy Bears","Yo-Yos","Kites","Playing Cards","Chess","Monopoly","Slinky","Play-Doh","Hot Wheels","Frisbee","Jigsaw Puzzles","Toy Trains","Dolls Through History","Arcade Games","Crayons"],
+  "Plants & Nature": ["Trees","Flowers","Mushrooms","Cactuses","Rainforests","Meat-Eating Plants","Bamboo","Seeds","Redwoods","Fall Colors","Moss","Volcanoes","Caves","Deserts","Waterfalls","Rivers","Mountains","Rocks & Crystals","Sunflowers","Weird Plants"],
+  "Weather": ["Lightning","Tornadoes","Hurricanes","Snowflakes","Rainbows","Hail","Clouds","Fog","Thunder","Heat Waves","Blizzards","Wind","Weather Records","Weather Forecasting","Raindrops","Dust Storms","Frost & Ice","Climate Zones","Weather Folklore","Sunsets"],
+  "Science": ["Gravity","Light","Sound","Electricity","Magnets","Atoms","DNA","Kitchen Chemistry","Germs & Bacteria","Fire","Water","Time","Glass","Color","Static Electricity","Bubbles","Fossils","Famous Experiments","Famous Scientists","The Periodic Table"],
+  "Inventions": ["The Light Bulb","The Telephone","The Printing Press","The Airplane","The Wheel","The Refrigerator","The Microwave","The Bicycle","The Zipper","Velcro","Post-it Notes","The Camera","Eyeglasses","The Toilet","The Television","The Radio","Penicillin","The Sewing Machine","The Elevator","Matches"],
+  "Everyday Things": ["Pencils","Light Switches","Toothbrushes","Coins & Bills","Mirrors","Umbrellas","Shoes","Socks","Jeans","Doorknobs","Keys & Locks","Paper Clips","Soap","Clocks","Calendars","Buttons","Sunglasses","Tape","Batteries","Mail & Stamps"],
+  "Food & Drink": ["Pizza","Chocolate","Ice Cream","Popcorn","Bananas","Coffee","Tea","Honey","Peanut Butter","Hot Dogs","Hamburgers","Cheese","Bread","Spices","Candy","Potato Chips","Soda","Eggs","Apples","Fast Food"],
+  "History": ["Ancient Egypt","Ancient Rome","Ancient Greece","Vikings","Knights & Castles","Samurai","The Wild West","The Titanic","The Pyramids","The Great Wall of China","White House History","Famous Explorers","The Middle Ages","The Industrial Revolution","The Roaring Twenties","Ancient China","The Aztecs & Maya","Lost Cities","Old-Time Medicine","Famous Mix-Ups"],
+  "On This Day": ["Big Events","Inventions & Patents","Famous Birthdays","Sports Moments","Space Missions","Music History","Movie & TV Firsts","Science Discoveries","World Records","Weird News of the Past","Holidays & Observances","Explorers & Firsts","Food History","Business & Brands","Books & Authors","Weather Events","Animals in History","Toys & Games","Transportation Firsts","Art & Artists"],
+  "Geography & Places": ["Countries","Capital Cities","Islands","Antarctica","The Amazon","The Sahara","National Parks","Famous Landmarks","Bridges","Skyscrapers","Tiny Countries","Flags","Strange Borders","The Great Lakes","The Grand Canyon","U.S. States","Time Zones","Mount Everest","Ghost Towns","Place Names"],
+  "Words & Language": ["Word Origins","Slang","Idioms","Alphabets","Longest Words","Palindromes","Sign Language","Emojis","Spelling Bees","Shakespeare's Words","Languages of the World","Names","Tongue Twisters","Dictionaries","Punctuation","Made-Up Words","Writing Systems","Brand Names","Animal Sounds Abroad","Nicknames"],
+  "Technology": ["Smartphones","The Internet","Artificial Intelligence","Robots","Computers","Video Game Tech","Email","Social Media","Wi-Fi","GPS","Batteries & Charging","Drones","3D Printing","Self-Driving Cars","Passwords & Security","Smart Homes","Space Tech","Virtual Reality","Coding","Data Centers"],
+  "Sports": ["Baseball","Football","Basketball","Soccer","Hockey","The Olympics","Tennis","Golf","Bowling","Skateboarding","Surfing","Swimming","Track & Field","Boxing","NASCAR","Horse Racing","The Super Bowl","The World Series","Sports Mascots","Strange Sports"],
+  "Music": ["The Piano","Guitars","Drums","Rock & Roll","Jazz","Classical Music","Hip-Hop","Country Music","The Beatles","Musical Instruments","Vinyl Records","Radio","Orchestras","Music & the Brain","Famous Songwriters","Broadway","Movie Soundtracks","Music Festivals","Singing","Weird Instruments"],
+  "Movies & TV": ["Animation","Cartoons","Special Effects","The Oscars","Movie Theaters","Silent Films","Sitcoms","Game Shows","Superhero Movies","Movie Props","Stunts","Hollywood History","TV Commercials","Movie Popcorn","Famous Movie Animals","Movie Sets","Talk Shows","Disney History","Science Fiction","Behind the Scenes"],
+  "Cars & Transportation": ["Trains","Airplanes","Cars","Ships","Bicycles","Motorcycles","Subways","Roller Coasters","Hot Air Balloons","Helicopters","Race Cars","School Buses","Traffic Lights","Highways","Electric Cars","Taxis","Tunnels","Space Shuttles","The Model T","Road Trips"]
+};
 const BANNER = ["Octopus","Platypus","Saturn","Axolotl","Tardigrade","Lightning","Eiffel Tower","Honey"];
 const BANNER_EMO = ["🐙","🦆","🪐","🦎","🔬","⚡","🗼","🍯"];
+const COUNT = 10;
 const ANGLES = [
   "Records, extremes, big numbers, and how it actually works.",
   "Origins and history, odd true stories, and popular myths that turn out to be wrong."
@@ -396,7 +454,7 @@ const ANGLES = [
 
 /* ================= state ================= */
 const S = {
-  topic:"", label:"", cat:"", flavors:new Set(), level:"family", count:8, voice:true,
+  topic:"", label:"", cat:"", flavors:new Set(), level:"family", count:COUNT, voice:true, picked:new Set(ROTA), related:"", offer:"", sub:"",
   facts:[], idx:0, pending:0, note:"", run:0, playing:false, paused:false, started:false, ended:false,
   show:0, report:null, reportFor:-1, qa:[], audio:null, utter:null, ttsOk:true
 };
@@ -407,11 +465,31 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 /* ================= header bits ================= */
 $("tickText").innerHTML = Array(2).fill(["Useless but interesting","Extraordinary","Incredible","Unusual","Weird","True"].map(w => `<span>★ ${w}</span>`).join("")).join("");
-function hostsHtml(){
-  $("hosts").innerHTML = ROTA.map(k => { const h = HOSTS[k]; return `<div class="host" id="h_${k}" style="--c:${h.c}"><div class="face">${h.init}<i>${h.mic}</i></div><div><b>${h.name}</b><small>${h.role}</small></div><span class="air">ON AIR</span></div>`; }).join("");
+// The hosts the visitor picked, in show order. Read Only = no voices.
+function rota(){ const r = ROTA.filter(k => S.picked.has(k)); return r.length ? r : ROTA.slice(); }
+function hostsHtml(live){
+  const el = $("hosts");
+  $("hostLabel").classList.toggle("hide", !!live);
+  el.classList.toggle("live", !!live);
+  if (live) {
+    const list = rota(); el.style.setProperty("--n", list.length);
+    el.innerHTML = list.map(k => { const h = HOSTS[k]; return `<div class="host" id="h_${k}" style="--c:${h.c}"><div class="face">${h.init}<i>${h.mic}</i></div><div><b>${h.name}</b><small>${h.role}</small></div><span class="air">ON AIR</span></div>`; }).join("");
+    return;
+  }
+  el.innerHTML = ROTA.map(k => { const h = HOSTS[k], on = S.voice && S.picked.has(k); return `<button type="button" class="host pick ${on ? "sel" : ""}" data-h="${k}" style="--c:${h.c}" aria-pressed="${on}"><span class="tick">✓</span><div class="face">${h.init}<i>${h.mic}</i></div><div><b>${h.name}</b><small>${h.role}</small></div></button>`; }).join("") +
+    `<button type="button" class="host pick ro ${S.voice ? "" : "sel"}" data-h="ro" style="--c:var(--ink)" aria-pressed="${!S.voice}"><span class="tick">✓</span><div class="face">📖</div><div><b>Read Only</b><small>No voices. Just read the facts.</small></div></button>`;
 }
-hostsHtml();
-function onAir(k){ ROTA.forEach(x => $("h_" + x).classList.toggle("on", x === k)); }
+$("hosts").addEventListener("click", e => {
+  const b = e.target.closest(".host.pick"); if (!b) return;
+  const k = b.dataset.h;
+  if (k === "ro") S.voice = false;
+  else if (!S.voice) { S.voice = true; S.picked = new Set([k]); }
+  else if (S.picked.has(k)) { if (S.picked.size > 1) S.picked.delete(k); }
+  else S.picked.add(k);
+  hostsHtml(false);
+});
+hostsHtml(false);
+function onAir(k){ ROTA.forEach(x => { const el = $("h_" + x); if (el) el.classList.toggle("on", x === k); }); }
 
 /* ================= photos (Wikipedia / Wikimedia Commons, credited, no saving) ================= */
 const stripTags = h => { const d = document.createElement("div"); d.innerHTML = h || ""; return (d.textContent || "").replace(/\s+/g, " ").trim(); };
@@ -433,6 +511,28 @@ function wikiPhoto(title, width){
     } catch (e) { return null; }
   })();
 }
+// One photo: Wikipedia's own picture first, then Commons and the web through our server (Serper).
+const findMem = {};
+function findPhoto(wiki, words){
+  const k = (wiki || "") + "|" + (words || "");
+  if (findMem[k]) return findMem[k];
+  return findMem[k] = (async () => {
+    const w = await wikiPhoto(wiki);
+    if (w) return w;
+    if (!words) return null;
+    try {
+      const r = await fetch("/api/image?q=" + encodeURIComponent(words));
+      const j = await r.json();
+      const im = j && j.image;
+      if (!im || !im.src) return null;
+      return { url: im.src, page: im.link, artist: im.credit, license: im.license, web: !!im.web, source: im.source };
+    } catch (e) { return null; }
+  })();
+}
+function photoHtml(p, alt){
+  const credit = p.web ? `Photo: <a href="${esc(p.page)}" target="_blank" rel="noopener">${esc(p.source || p.artist)}</a>` : `Photo: ${esc(p.artist)}${p.license ? ", " + esc(p.license) : ""} · <a href="${esc(p.page)}" target="_blank" rel="noopener">Wikimedia Commons</a>`;
+  return `<img src="${esc(p.url)}" alt="${esc(alt)}" onerror="this.parentNode&&this.parentNode.classList.add('nopic')"><div class="pc">${credit}</div>`;
+}
 (function banner(){
   const b = $("banner"), first = b.firstChild;
   BANNER.forEach((t, i) => {
@@ -449,11 +549,25 @@ $("cats").innerHTML = CATS.map(([e, n], i) => `<button class="cat" type="button"
 $("cats").addEventListener("click", e => {
   const b = e.target.closest(".cat"); if (!b) return;
   const n = CATS[+b.dataset.i][1];
-  S.cat = S.cat === n ? "" : n;
-  document.querySelectorAll(".cat").forEach(x => x.classList.toggle("sel", CATS[+x.dataset.i][1] === S.cat));
-  if (S.cat) $("topicIn").value = "";
+  S.cat = S.cat === n ? "" : n; S.sub = "";
+  paintCats();
+  if (S.cat) { $("topicIn").value = ""; $("subBox").scrollIntoView({ behavior:"smooth", block:"nearest" }); }
 });
-$("topicIn").addEventListener("input", () => { if ($("topicIn").value.trim()) { S.cat = ""; document.querySelectorAll(".cat").forEach(x => x.classList.remove("sel")); } });
+function paintCats(){
+  document.querySelectorAll(".cat").forEach(x => x.classList.toggle("sel", CATS[+x.dataset.i][1] === S.cat));
+  $("subBox").classList.toggle("hide", !S.cat);
+  if (!S.cat) return;
+  $("subTitle").textContent = S.cat === "On This Day" ? `On This Day (${todayLabel()}): pick an angle` : `Pick a subtopic in ${S.cat}`;
+  $("subs").innerHTML = SUBS[S.cat].map(t => `<button type="button" class="chip sub ${S.sub === t ? "sel" : ""}" data-t="${esc(t)}">${esc(t)}</button>`).join("");
+  $("subEx").textContent = S.cat === "On This Day" ? "Example: famous inventions, sports, space" : "Example: " + SUBS[S.cat].slice(0, 2).join(", ").toLowerCase() + ", or anything else in " + S.cat;
+}
+$("subs").addEventListener("click", e => {
+  const b = e.target.closest(".chip.sub"); if (!b) return;
+  S.sub = S.sub === b.dataset.t ? "" : b.dataset.t; $("subIn").value = ""; paintCats();
+});
+$("subIn").addEventListener("input", () => { if ($("subIn").value.trim()) { S.sub = ""; document.querySelectorAll(".chip.sub").forEach(x => x.classList.remove("sel")); } });
+$("subIn").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+$("topicIn").addEventListener("input", () => { if ($("topicIn").value.trim()) { S.cat = ""; S.sub = ""; paintCats(); } });
 $("topicIn").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
 $("goBtn").onclick = go;
 
@@ -477,8 +591,6 @@ function seg(id, key, cast){
   paint();
 }
 seg("lvlSeg", "level", v => v);
-seg("cntSeg", "count", v => +v);
-seg("vocSeg", "voice", v => v === "1");
 
 /* ================= server calls ================= */
 async function post(url, body, ms){
@@ -542,11 +654,19 @@ function hush(){
   try { speechSynthesis.cancel(); } catch (e) {}
   S.paused = false; S.playing = false; onAir(null); paintCtl();
 }
-function readerOf(i){ const f = S.facts[i]; let r = ROTA[i % 3]; if (f && r === f.by) r = ROTA[(i + 2) % 3]; return r; }
+function readerOf(i){ const f = S.facts[i], R = rota(); let r = R[i % R.length]; if (f && R.length > 1 && r === f.by) r = R[(i + R.length - 1) % R.length]; return r; }
+const lastLead = {};
+function leadFor(host, i){
+  const f = S.facts[i]; f.lead = f.lead || {};
+  if (f.lead[host]) return f.lead[host];
+  const list = LEADS[host] || LEADS.dot; let l;
+  do { l = pick(list); } while (list.length > 1 && l === lastLead[host]);
+  lastLead[host] = l; return (f.lead[host] = l);
+}
 function lines(i){
   const f = S.facts[i];
   return [
-    { host: readerOf(i), text: `${pick(LEADS[f.flavor] || LEADS.true)} ${f.fact} ${f.explain}` },
+    { host: readerOf(i), text: f.myth ? `Myth time! A lot of people think ${f.myth.replace(/\.$/, "")}. Nope! ${f.fact} ${f.explain}` : `${leadFor(readerOf(i), i)} ${f.fact} ${f.explain}` },
     { host: f.by, text: f.comment }
   ];
 }
@@ -554,11 +674,17 @@ function prefetch(i){ if (!S.voice || !S.ttsOk || !S.facts[i]) return; lines(i).
 
 /* ================= the show ================= */
 function go(){
-  const typed = $("topicIn").value.trim();
+  const typed = $("topicIn").value.trim(), own = $("subIn").value.trim(), pickd = own || S.sub;
   if (!typed && !S.cat) return showErr("Pick a category or type a topic first.");
   hideErr();
-  if (S.cat === "On This Day" && !typed) { S.label = "On This Day: " + todayLabel(); S.topic = `interesting things that happened on ${todayLabel()} in different years throughout history`; }
-  else { S.label = typed || S.cat; S.topic = typed || S.cat; }
+  S.offer = ""; S.related = "";
+  if (typed) { S.label = typed; S.topic = typed; }
+  else if (S.cat === "On This Day") {
+    S.label = `On This Day (${todayLabel()})${pickd ? ": " + pickd : ""}`;
+    S.topic = `${pickd ? pickd + ": " : ""}interesting things that happened on ${todayLabel()} in different years throughout history`;
+  }
+  else if (pickd) { S.label = pickd; S.topic = `${pickd} (${S.cat})`; }
+  else { S.label = S.cat; S.topic = S.cat; }
   startShow(true);
 }
 function showErr(m){ $("setupErr").textContent = m; $("setupErr").classList.remove("hide"); }
@@ -569,6 +695,8 @@ function startShow(fresh){
   S.facts = fresh ? [] : S.facts; S.idx = fresh ? 0 : S.facts.length; S.note = ""; S.ended = false; S.started = false;
   closeReport();
   $("setup").classList.add("hide"); $("studio").classList.remove("hide"); $("resumeRow").classList.add("hide");
+  hostsHtml(true);
+  S.offer = "";
   $("showTitle").textContent = S.label;
   paintNote();
   const run = S.run;
@@ -581,25 +709,28 @@ function startShow(fresh){
 }
 function fetchFacts(show){
   const total = S.count, half = total / 2;
+  S.related = "";
   const startAt = S.facts.length;
   const seen = S.facts.map(f => f.fact);
   S.pending = 2;
   [0, 1].forEach(b => {
     const base = startAt + b * half;
-    const hosts = Array.from({ length: half }, (_, k) => ROTA[(base + k + 1) % 3]);
+    const R = rota();
+    const hosts = Array.from({ length: half }, (_, k) => R[(base + k + 1) % R.length]);
     post("/api/facts", { mode:"facts", topic:S.topic, category:S.cat, flavors:[...S.flavors], count:half, level:S.level, exclude:seen, angle:ANGLES[b], hosts }, 115000)
       .then(j => {
         if (show !== S.show) return;
         if (!j || j.ok === false) { S.note = (j && j.note) || "Let's try a different topic."; S.declined = true; return; }
         (j.facts || []).forEach((f, k) => {
           if (S.facts.some(x => similar(x.fact, f.fact))) return;
-          f.by = hosts[k] || ROTA[(S.facts.length + 1) % 3]; f.topic = S.label;
+          f.by = hosts[k] || rota()[0]; f.topic = S.label;
           S.facts.push(f);
         });
         if (!j.enough) S.short = true;
+        if (j.related && !S.related) S.related = j.related;
       })
       .catch(e => { S.fail = errMsg(e); })
-      .finally(() => { if (show !== S.show) return; S.pending--; paintDots(); if (!S.pending) finishFetch(); if (S.facts.length && !S.started) firstCard(); });
+      .finally(() => { if (show !== S.show) return; S.pending--; paintDots(); paintNav(); if (!S.pending) finishFetch(); if (S.facts.length && !S.started) firstCard(); });
   });
 }
 function similar(a, b){
@@ -610,16 +741,19 @@ function similar(a, b){
 function finishFetch(){
   const got = S.facts.length;
   if (S.declined && !got) { backToSetup(); showErr(S.note); S.declined = false; return; }
-  if (!got) { paintCard(); S.note = S.fail || `We couldn't confirm any solid facts about "${S.label}". Try a broader topic.`; paintNote(); S.fail = ""; return; }
-  if (S.short || got < S.target) S.note = `We could only confirm ${got - S.startCount} solid fact${got - S.startCount === 1 ? "" : "s"} about "${S.label}" this round. Rather than make any up, that's where we stop.`;
+  const fresh = got - S.startCount;
+  if (!got) { paintCard(); S.note = S.fail || `We couldn't confirm any solid facts about "${S.label}".`; S.offer = S.related; paintNote(); S.fail = ""; if (S.offer && S.voice) say(rota().includes("prof") ? "prof" : rota()[0], `We couldn't find solid facts on that one. How about we try ${S.offer}?`, S.run); return; }
+  if (S.short || got < S.target) { S.note = `We could only confirm ${fresh} solid fact${fresh === 1 ? "" : "s"} about "${S.label}" this round. Rather than make any up, that's where we stop.`; S.offer = S.related; }
   S.short = false; S.declined = false; S.fail = "";
   paintNote(); paintDots();
 }
 function firstCard(){ S.started = true; paintCard(); paintDots(); }
 
 async function showLoop(run, fresh){
-  if (S.voice && fresh) await say("max", `Welcome to Just the Facts! I'm Max, here with Dot and the Professor. Today's topic: ${S.label}. Let's roll!`, run);
-  else if (S.voice) await say("dot", `More facts about ${S.label}? Coming right up.`, run);
+  const R = rota(), names = R.map(k => HOSTS[k].name);
+  const with_ = names.length > 1 ? `, here with ${names.slice(1).join(" and ")}` : "";
+  if (S.voice && fresh) await say(R[0], `Welcome to Just the Facts! I'm ${names[0]}${with_}. Today's topic: ${S.label}. Let's roll!`, run);
+  else if (S.voice) await say(R[R.length > 1 ? 1 : 0], `More facts about ${S.label}? Coming right up!`, run);
   while (run === S.run && !S.facts[S.idx] && S.pending) await sleep(300);
   if (run !== S.run) return;
   if (!S.facts[S.idx]) { paintCard(); return; }
@@ -654,14 +788,24 @@ async function playFrom(i){
 async function endShow(run){
   S.ended = true; paintCard(); paintDots();
   if (!S.voice) return;
-  const got = S.facts.length - S.startCount;
-  const extra = got < S.count ? ` This one was a narrow topic. We could only confirm ${got} solid facts, and we don't make things up.` : "";
-  await say("prof", `And those are the facts!${extra} Tap Dig Deeper on any card for the full story.`, run);
+  const got = S.facts.length - S.startCount, R = rota(), closer = R.includes("prof") ? "prof" : R[R.length - 1];
+  if (S.offer) { await say(closer, `We ran out of facts on ${S.label}, and we don't make things up. How about we continue with ${S.offer}? Tap yes to keep going.`, run); return; }
+  await say(closer, `And those are the facts! Tap Find More for ten more, or Dig Deeper on any card for the full story.`, run);
 }
 
 /* ================= painting ================= */
 function scrollTop(){ try { $("app").scrollIntoView({ behavior:"smooth", block:"start" }); } catch (e) {} }
-function paintNote(){ $("note").textContent = S.note; $("note").classList.toggle("hide", !S.note); }
+function paintNote(){
+  const el = $("note");
+  if (S.offer) {
+    el.className = "offer";
+    el.innerHTML = `We ran out of solid facts on <b>${esc(S.label)}</b>, and we don't make things up. How about we continue with <b>${esc(S.offer)}</b>?<div class="nav"><button class="btn y" type="button" id="offYes">Yes, keep going</button><button class="btn" type="button" id="offNo">No thanks</button></div>`;
+    $("offYes").onclick = () => { const t = S.offer; S.offer = ""; S.note = ""; S.label = t; S.topic = t; S.cat = ""; S.sub = ""; startShow(false); };
+    $("offNo").onclick = () => { S.offer = ""; paintNote(); };
+    return;
+  }
+  el.className = "note"; el.textContent = S.note; el.classList.toggle("hide", !S.note);
+}
 const LOADMSG = ["Checking the facts…", "Throwing out the fake ones…", "Dot is not convinced yet…", "Max can't believe it…", "The Professor is reading the fine print…", "Stamping the true ones…"];
 let loadTimer = null;
 function paintLoading(){
@@ -679,21 +823,22 @@ function paintCard(){
     $("card").innerHTML = `<div class="endcard"><h3>No facts this time</h3><p>We only show facts we can confirm with strong sources.</p><div class="nav"><button class="btn y" type="button" onclick="backToSetup()">Try another topic</button></div></div>`;
     return paintNav();
   }
-  const fl = FLAVORS[f.flavor] || FLAVORS.true, h = HOSTS[f.by] || HOSTS.prof;
+  const fl = FLAVORS[f.flavor] || FL0, h = HOSTS[f.by] || HOSTS.prof;
   $("card").style.setProperty("--fc", fl.color + "33");
   $("card").innerHTML = `
     <div class="pic" id="pic"><div class="emo">${fl.emo}</div></div>
     <div class="body">
       <div class="num">FACT ${S.idx + 1} OF ${Math.max(S.facts.length, S.ended || !S.pending ? S.facts.length : S.target)}</div>
       <div class="stamp" style="--sc:${fl.color}">${esc(fl.name)}</div>
-      <div class="thefact">${esc(f.fact)}</div>
+      ${f.myth ? `<div class="myth">MYTH: <s>${esc(f.myth)}</s></div>` : ""}
+      <div class="thefact">${f.myth ? "FACT: " : ""}${esc(f.fact)}</div>
       <p class="explain"><b>HOW CAN THAT BE?</b>${esc(f.explain)}</p>
       <div class="bubble ${S.voice && S.playing ? "" : "show"}" id="bubble" style="--c:${h.c}"><div class="face">${h.init}</div><p><small>${esc(h.name)}</small>${esc(f.comment)}</p></div>
       <div class="src"><span class="true">TRUE ✓</span>Checked: ${f.sources.map((s, i) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>
     </div>`;
-  if (f.wiki) wikiPhoto(f.wiki).then(p => {
+  if (f.wiki || f.photo) findPhoto(f.wiki, f.photo).then(p => {
     const box = $("pic"); if (!p || !box || S.facts[S.idx] !== f) return;
-    box.innerHTML = `<img src="${esc(p.url)}" alt="${esc(f.wiki)}"><div class="pc">Photo: ${esc(p.artist)}${p.license ? ", " + esc(p.license) : ""} · <a href="${esc(p.page)}" target="_blank" rel="noopener">Wikimedia Commons</a></div>`;
+    box.innerHTML = `<div class="emo">${fl.emo}</div>` + photoHtml(p, f.wiki || f.photo);
   });
   paintNav();
 }
@@ -703,7 +848,7 @@ function paintEnd(){
   $("card").innerHTML = `<div class="endcard"><h3>THAT'S THE FACTS!</h3>
     <p>${got} checked fact${got === 1 ? "" : "s"} about <b>${esc(S.label)}</b>. Tap any number below to revisit one.</p>
     <div class="nav">
-      <button class="btn r" type="button" id="moreBtn">➕ More facts on this topic</button>
+      <button class="btn r" type="button" id="moreBtn">➕ Find More</button>
       <button class="btn y" type="button" id="newBtn">🎲 New topic</button>
       <button class="btn" type="button" id="printBtn">🖨 Print fact sheet</button>
     </div></div>`;
@@ -718,6 +863,7 @@ function paintNav(){
   $("nextBtn").disabled = !has;
   $("againBtn").disabled = !has || !S.voice;
   $("deepBtn").disabled = !has;
+  $("findBtn").disabled = !S.facts.length || S.pending > 0;
   paintCtl();
 }
 function paintDots(){
@@ -740,6 +886,7 @@ $("prevBtn").onclick = () => { closeReport(); if (document.querySelector(".endca
 $("nextBtn").onclick = () => { closeReport(); if (S.facts[S.idx + 1]) goTo(S.idx + 1); else { hush(); S.ended = true; paintCard(); paintDots(); } };
 $("againBtn").onclick = () => { closeReport(); const i = S.idx; hush(); const run = S.run; (async () => { const [a, b] = lines(i); showBubble(false); await say(a.host, a.text, run); if (run !== S.run) return; showBubble(true); await say(b.host, b.text, run); })(); };
 $("deepBtn").onclick = () => openReport(S.idx);
+$("findBtn").onclick = () => { if (S.facts.length && !S.pending) startShow(false); };
 $("pauseBtn").onclick = () => {
   if (!S.voice) return;
   if (S.paused) { S.paused = false; if (S.audio) S.audio.play().catch(() => {}); try { speechSynthesis.resume(); } catch (e) {} }
@@ -749,8 +896,8 @@ $("pauseBtn").onclick = () => {
 $("stopBtn").onclick = () => { hush(); showBubble(true); };
 $("restartBtn").onclick = () => { closeReport(); if (S.facts.length) { S.ended = false; goTo(0); } };
 $("voiceBtn").onclick = () => { S.voice = !S.voice; if (!S.voice) { hush(); showBubble(true); } paintCtl(); paintNav(); };
-$("closeBtn").onclick = () => { if (S.reportFor >= 0) return closeReport(); hush(); $("studio").classList.add("hide"); $("setup").classList.remove("hide"); $("resumeRow").classList.toggle("hide", !S.facts.length); };
-$("resumeBtn").onclick = () => { $("setup").classList.add("hide"); $("studio").classList.remove("hide"); paintCard(); paintDots(); };
+$("closeBtn").onclick = () => { if (S.reportFor >= 0) return closeReport(); hush(); $("studio").classList.add("hide"); $("setup").classList.remove("hide"); $("resumeRow").classList.toggle("hide", !S.facts.length); hostsHtml(false); };
+$("resumeBtn").onclick = () => { $("setup").classList.add("hide"); $("studio").classList.remove("hide"); hostsHtml(true); paintCard(); paintDots(); };
 $("homeBtn").onclick = () => backToSetup(true);
 function backToSetup(reset){
   hush(); closeReport();
@@ -758,6 +905,8 @@ function backToSetup(reset){
   if (reset) { S.facts = []; S.idx = 0; S.note = ""; S.cat = ""; $("topicIn").value = ""; document.querySelectorAll(".cat").forEach(x => x.classList.remove("sel")); paintNote(); }
   $("studio").classList.add("hide"); $("setup").classList.remove("hide");
   $("resumeRow").classList.toggle("hide", !S.facts.length);
+  hostsHtml(false);
+  if (reset) { S.sub = ""; $("subIn").value = ""; paintCats(); }
   scrollTop();
 }
 
@@ -783,6 +932,7 @@ function paintReport(){
     <button class="x" type="button" id="rClose" aria-label="Close report">✕</button>
     <div class="label">Dig Deeper · Fact ${S.reportFor + 1}</div>
     <h3>${esc(r.title || "The full story")}</h3>
+    <div id="rPic"></div>
     ${r.sections.map(s => `<h4 class="${/correction/i.test(s.head) ? "fix" : ""}">${esc(s.head)}</h4><p>${esc(s.text)}</p>`).join("")}
     <div class="src" style="margin-top:12px"><span class="true">CHECKED</span>${r.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>
     ${r.clarify ? `<div class="label">Quick question for you</div><p><b>${esc(r.clarify.question)}</b></p>${chipRow(r.clarify.choices || [], "cl")}` : ""}
@@ -802,6 +952,7 @@ function paintReport(){
     </div>
   </div>`;
   paintQA();
+  if (r.photo) { const at = S.reportFor; findPhoto("", r.photo).then(p => { const el = $("rPic"); if (!p || !el || S.reportFor !== at) return; el.className = "rpic"; el.innerHTML = photoHtml(p, r.photo); }); }
   $("rClose").onclick = closeReport;
   $("qGo").onclick = () => ask($("qIn").value);
   $("qIn").onkeydown = e => { if (e.key === "Enter") ask($("qIn").value); };
@@ -811,7 +962,7 @@ function paintReport(){
 }
 function paintQA(){
   const el = $("qaList"); if (!el) return;
-  el.innerHTML = S.qa.map((x, k) => `<div class="qa"><b>Q: ${esc(x.q)}</b>${x.a == null ? `<span class="spin"></span>Checking…` : `<p>${esc(x.a)}</p>${x.sources && x.sources.length ? `<div class="small">Sources: ${x.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>` : ""}${x.clarify ? `<p style="margin-top:6px"><b>${esc(x.clarify.question)}</b></p><div class="chips">${(x.clarify.choices || []).map(c => `<button type="button" class="chip qc" data-k="${k}" data-q="${esc(c)}">${esc(c)}</button>`).join("")}</div>` : ""}`}</div>`).join("");
+  el.innerHTML = S.qa.map((x, k) => `<div class="qa"><b>Q: ${esc(x.q)}</b>${x.a == null ? `<span class="spin"></span>Checking…` : `<p>${esc(x.a)}</p>${x.pic ? `<div class="rpic">${photoHtml(x.pic, x.photo)}</div>` : ""}${x.sources && x.sources.length ? `<div class="small">Sources: ${x.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>` : ""}${x.clarify ? `<p style="margin-top:6px"><b>${esc(x.clarify.question)}</b></p><div class="chips">${(x.clarify.choices || []).map(c => `<button type="button" class="chip qc" data-k="${k}" data-q="${esc(c)}">${esc(c)}</button>`).join("")}</div>` : ""}`}</div>`).join("");
   el.querySelectorAll(".chip.qc").forEach(b => b.onclick = () => { const x = S.qa[+b.dataset.k]; ask(`${x.clarify.question} ${b.dataset.q}`); });
 }
 async function ask(q){
@@ -821,9 +972,10 @@ async function ask(q){
   if ($("qIn")) $("qIn").value = "";
   try {
     const j = await post("/api/facts", { mode:"ask", fact:f, topic:S.label, report:S.report, question:q, history:S.qa.filter(x => x.a != null).map(x => ({ q:x.q, a:x.a })), level:S.level });
-    item.a = j.answer; item.sources = j.sources || []; item.clarify = j.clarify;
+    item.a = j.answer; item.sources = j.sources || []; item.clarify = j.clarify; item.photo = j.photo || "";
   } catch (e) { item.a = errMsg(e); }
   if (S.reportFor === i) paintQA();
+  if (item.photo) findPhoto("", item.photo).then(p => { if (!p) return; item.pic = p; if (S.reportFor === i) paintQA(); });
 }
 function reportPlain(){
   const f = S.facts[S.reportFor], r = S.report;
@@ -848,7 +1000,7 @@ async function compare(){
 /* ================= print ================= */
 function printSheet(){
   $("printSheet").innerHTML = `<h1>JUST THE FACTS: ${esc(S.label)}</h1><p>Useless but interesting. Extraordinary. Incredible. Unusual. Weird. True. · nusparklearnwow.com</p>` +
-    S.facts.map((f, i) => `<div class="pf"><b>${i + 1}. ${esc(f.fact)}</b><div>${esc(f.explain)}</div><div style="font-size:11px;margin-top:4px">${esc((FLAVORS[f.flavor] || FLAVORS.true).name)} · Source: ${esc(f.sources[0] ? f.sources[0].title : "")}</div></div>`).join("");
+    S.facts.map((f, i) => `<div class="pf"><b>${i + 1}. ${esc(f.fact)}</b><div>${esc(f.explain)}</div><div style="font-size:11px;margin-top:4px">${esc((FLAVORS[f.flavor] || FL0).name)} · Source: ${esc(f.sources[0] ? f.sources[0].title : "")}</div></div>`).join("");
   window.print();
 }
 
