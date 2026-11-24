@@ -86,13 +86,14 @@ For each fact write:
 - "explain": 2-3 sentences explaining why or how it's true, with context. No new claims beyond what the sources support.
 - "comment": a short spoken reaction (under 20 words) from the host named below, in that host's personality. Pure reaction or a light everyday comparison; it must not add new factual claims.
 - "wiki": the exact title of an English Wikipedia article whose main photo shows the subject (an animal, place, object or thing; never a living person; nothing graphic). Empty if none fits.
+- "photo": 2-5 plain search words for one good photo of the fact's subject (for example "giant pacific octopus" or "Eiffel Tower at night"). Never a living person's name; nothing graphic.
 Comment hosts, in fact order: ${hosts.map((h, i) => `fact ${i + 1} = ${HOSTS[h]}`).join(" | ")}
 
 If the topic breaks the content rules or isn't a real topic, set "ok" to false and put a friendly one-sentence redirect with a better topic idea in "note".
 If you could not confirm ${n} solid facts, return only the ones you could, set "enough" to false, and write an honest one-sentence "note" (for example: "This is a narrow topic, so we could only confirm 3 solid facts.").
 
 Reply shape:
-<json>{"ok": true, "enough": true, "note": "", "facts": [{"flavor": "${Object.keys(FLAVORS).join("|")}", "fact": "...", "explain": "...", "comment": "...", "wiki": "...", ${sourcesShape}}]}</json>`;
+<json>{"ok": true, "enough": true, "note": "", "facts": [{"flavor": "${Object.keys(FLAVORS).join("|")}", "fact": "...", "explain": "...", "comment": "...", "wiki": "...", "photo": "...", ${sourcesShape}}]}</json>`;
 }
 
 function factBlock(b) {
@@ -114,10 +115,11 @@ Write a DOUBLE-LENGTH report (about 650-850 words total) that tells the full sto
 Organize it in 5-6 sections with short, fun headings. End with a section headed "The Bottom Line" (2-3 sentences).
 If the card turns out to be wrong or overstated, say so plainly in a section headed "Correction" and explain what's actually true.
 Only if a genuinely better report depends on something you don't know about the visitor, add ONE short clarifying question with 2-4 tap choices; otherwise leave "clarify" empty.
+Also give "photo": 2-5 plain search words for ONE photo that best illustrates the report (a different view from the card if possible; never a living person; nothing graphic).
 Also give 6 short, varied follow-up questions a curious person might ask next (under 10 words each).
 
 Reply shape:
-<json>{"title": "report title, under 70 characters", "sections": [{"head": "...", "text": "..."}], "correction": false, "clarify": {"question": "", "choices": []}, "next_questions": ["..."], ${sourcesShape}}</json>`;
+<json>{"title": "report title, under 70 characters", "sections": [{"head": "...", "text": "..."}], "correction": false, "photo": "", "clarify": {"question": "", "choices": []}, "next_questions": ["..."], ${sourcesShape}}</json>`;
 }
 
 function askPrompt(b) {
@@ -132,9 +134,10 @@ ${levelText(level)}
 Answer in 4-8 sentences, using search to confirm. Related topics are fine if they stay within the content rules; otherwise politely steer back.
 If the question is ambiguous and a correct answer truly depends on what they mean, give your best short answer AND one clarifying question with 2-4 tap choices.
 If reliable sources don't answer it, set "confirmed" to false and say so honestly.
+Also give "photo": 2-5 plain search words for ONE photo that would help illustrate the answer, or empty if a photo wouldn't help (never a living person; nothing graphic).
 
 Reply shape:
-<json>{"confirmed": true, "answer": "...", "clarify": {"question": "", "choices": []}, ${sourcesShape}}</json>`;
+<json>{"confirmed": true, "answer": "...", "photo": "", "clarify": {"question": "", "choices": []}, ${sourcesShape}}</json>`;
 }
 
 function comparePrompt(b) {
@@ -281,7 +284,7 @@ module.exports = async (req, res) => {
         facts.push({
           flavor: FLAVORS[f.flavor] ? f.flavor : "true",
           fact: clip(f.fact, 260), explain: clip(f.explain, 900), comment: clip(f.comment, 200),
-          wiki: clip(f.wiki, 120), sources
+          wiki: clip(f.wiki, 120), photo: clip(f.photo, 80), sources
         });
       }
       const enough = facts.length >= n && j.enough !== false;
@@ -292,7 +295,7 @@ module.exports = async (req, res) => {
       const sources = verifySources(j.sources, retrieved);
       const sections = (Array.isArray(j.sections) ? j.sections : []).map(s => ({ head: clip(s.head, 90), text: clip(s.text, 2200) })).filter(s => s.text).slice(0, 7);
       if (!sections.length || !sources.length) return res.json({ ok: false, note: "We couldn't confirm a full report with strong sources right now, so we won't guess. Try again in a minute." });
-      return res.json({ ok: true, title: clip(j.title, 90), sections, correction: !!j.correction, clarify: cleanClarify(j.clarify), next_questions: (Array.isArray(j.next_questions) ? j.next_questions : []).map(q => clip(q, 80)).slice(0, 6), sources });
+      return res.json({ ok: true, title: clip(j.title, 90), sections, correction: !!j.correction, photo: clip(j.photo, 80), clarify: cleanClarify(j.clarify), next_questions: (Array.isArray(j.next_questions) ? j.next_questions : []).map(q => clip(q, 80)).slice(0, 6), sources });
     }
     if (b.mode === "ask") {
       const { j, retrieved } = await callClaude(askPrompt(b), 4);
@@ -300,7 +303,7 @@ module.exports = async (req, res) => {
       if (!sources.length || j.confirmed === false) {
         return res.json({ confirmed: false, answer: j.confirmed === false && j.answer ? clip(j.answer, 1200) : "We couldn't confirm an answer with strong sources, so we won't guess. Try asking it a different way.", clarify: cleanClarify(j.clarify), sources });
       }
-      return res.json({ confirmed: true, answer: clip(j.answer, 2200), clarify: cleanClarify(j.clarify), sources });
+      return res.json({ confirmed: true, answer: clip(j.answer, 2200), photo: clip(j.photo, 80), clarify: cleanClarify(j.clarify), sources });
     }
     if (b.mode === "compare") {
       const { j, retrieved } = await callClaude(comparePrompt(b), 5);
