@@ -5,14 +5,14 @@
 
 const env = k => process.env[k];
 const VOICES = {
-  max: env("VOICE_MAX") || "bPMKpgEe88vKSwusXTMU",   // Bryan - charismatic, energetic
-  dot: env("VOICE_DOT") || "hpp4J3VqNfWAUOO0d1Us",   // Bella - bright, warm, witty
+  max: env("VOICE_MAX") || "34lPwSZ54D8fWbX1aHzk",   // Guy - upbeat TV/radio announcer
+  dot: env("VOICE_DOT") || "r1KmysJdVYZjJCm4mL3b",   // Jessica - playful, bright, warm
   prof: env("VOICE_PROF") || "pqHfZKP75CvOlQylNhV4"  // Bill - wise, mature, calm
 };
 // Each host gets their own delivery: lower stability = more expressive.
 const STYLE = {
-  max: { stability: 0.32, style: 0.65, speed: 1.07 },
-  dot: { stability: 0.45, style: 0.5, speed: 1.02 },
+  max: { stability: 0.28, style: 0.75, speed: 1.08 },
+  dot: { stability: 0.32, style: 0.65, speed: 1.06 },
   prof: { stability: 0.6, style: 0.25, speed: 0.97 }
 };
 const cache = new Map();

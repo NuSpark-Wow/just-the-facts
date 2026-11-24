@@ -14,16 +14,23 @@ const DAILY_LIMIT = parseInt(process.env.DAILY_LIVE_LIMIT || "60", 10);
 
 const FLAVORS = {
   useless: "Useless but Interesting (trivia with zero practical value that people love to repeat)",
-  extraordinary: "Extraordinary (far beyond the ordinary: records, extremes, amazing feats)",
+  extraordinary: "Extraordinary (far beyond the ordinary: amazing feats and extremes)",
   incredible: "Incredible (hard to believe, but true)",
   unusual: "Unusual (rare, odd, out of the ordinary)",
   weird: "Weird (strange, quirky, makes you laugh or squint)",
-  true: "True (a straight-up solid fact most people get wrong or never knew)"
+  surprising: "Surprising (the opposite of what most people would guess)",
+  mindblowing: "Mind-Blowing (makes you stop and rethink something)",
+  funny: "Funny (genuinely amusing, but still a real documented fact)",
+  littleknown: "Little-Known (true and documented, but almost nobody has heard it)",
+  record: "Record-Breaking (biggest, smallest, fastest, oldest, first: documented records)",
+  mysterious: "Mysterious (real, documented things science still can't fully explain; say clearly what IS known and what isn't)",
+  myth: "Myth-Busting (a popular belief that is false, and the real fact; put the false belief in \"myth\")",
+  accidental: "Accidental Discoveries (things discovered or invented by accident, documented)"
 };
 const HOSTS = {
-  max: "Max: big, energetic reactions, genuinely amazed, loves exclamation points",
-  dot: "Dot: dry wit, a playful skeptic who gets won over, clever one-liners",
-  prof: "The Professor: calm and curious, connects it to something everyday, gentle humor"
+  max: "Max: a fun, upbeat radio host with BIG energy, genuinely amazed, loves exclamation points and playful exaggeration",
+  dot: "Dot: bright, playful and witty, a fun skeptic who gets won over, quick clever one-liners",
+  prof: "The Professor: calm and even, curious and wry, connects it to something everyday with gentle humor"
 };
 
 // ---------- per-visitor daily limit (resets when the server restarts; the Anthropic spend cap is the real backstop)
@@ -66,7 +73,7 @@ const clip = (s, n) => clean(s).slice(0, n);
 
 function factsPrompt(b) {
   const level = b.level === "family" ? "family" : "grown";
-  const n = Math.max(1, Math.min(6, parseInt(b.count, 10) || 4));
+  const n = Math.max(1, Math.min(6, parseInt(b.count, 10) || 5));
   const flav = (Array.isArray(b.flavors) ? b.flavors : []).filter(f => FLAVORS[f]);
   const flavList = (flav.length ? flav : Object.keys(FLAVORS)).map(f => `"${f}" = ${FLAVORS[f]}`).join("; ");
   const hosts = (Array.isArray(b.hosts) ? b.hosts : []).map(h => HOSTS[h] ? h : "prof").slice(0, n);
@@ -84,16 +91,18 @@ ${avoid || "- (none)"}
 For each fact write:
 - "fact": the fact itself, one punchy sentence (under 30 words).
 - "explain": 2-3 sentences explaining why or how it's true, with context. No new claims beyond what the sources support.
-- "comment": a short spoken reaction (under 20 words) from the host named below, in that host's personality. Pure reaction or a light everyday comparison; it must not add new factual claims.
+- "comment": a short, fun, spoken reaction (under 20 words) from the host named below, in that host's personality. Make it lively and playful, never flat. Pure reaction or a light everyday comparison; it must not add new factual claims.
+- "myth": ONLY for the "myth" flavor: the popular false belief, one short sentence (e.g. "Goldfish have a three-second memory."). Empty for every other flavor; the "fact" then states what is actually true.
 - "wiki": the exact title of an English Wikipedia article whose main photo shows the subject (an animal, place, object or thing; never a living person; nothing graphic). Empty if none fits.
 - "photo": 2-5 plain search words for one good photo of the fact's subject (for example "giant pacific octopus" or "Eiffel Tower at night"). Never a living person's name; nothing graphic.
 Comment hosts, in fact order: ${hosts.map((h, i) => `fact ${i + 1} = ${HOSTS[h]}`).join(" | ")}
 
 If the topic breaks the content rules or isn't a real topic, set "ok" to false and put a friendly one-sentence redirect with a better topic idea in "note".
 If you could not confirm ${n} solid facts, return only the ones you could, set "enough" to false, and write an honest one-sentence "note" (for example: "This is a narrow topic, so we could only confirm 3 solid facts.").
+Always give "related": a neighboring or slightly broader topic (2-6 words) that has plenty of well-documented facts, to offer the visitor if we run out (for "left-handed staplers": "office supplies that changed the world"). Family friendly, within the content rules.
 
 Reply shape:
-<json>{"ok": true, "enough": true, "note": "", "facts": [{"flavor": "${Object.keys(FLAVORS).join("|")}", "fact": "...", "explain": "...", "comment": "...", "wiki": "...", "photo": "...", ${sourcesShape}}]}</json>`;
+<json>{"ok": true, "enough": true, "note": "", "related": "...", "facts": [{"flavor": "${Object.keys(FLAVORS).join("|")}", "myth": "", "fact": "...", "explain": "...", "comment": "...", "wiki": "...", "photo": "...", ${sourcesShape}}]}</json>`;
 }
 
 function factBlock(b) {
@@ -271,7 +280,7 @@ module.exports = async (req, res) => {
   try {
     if (b.mode === "facts") {
       if (!clip(b.topic, 160)) return res.status(400).json({ error: "no_topic" });
-      const n = Math.max(1, Math.min(6, parseInt(b.count, 10) || 4));
+      const n = Math.max(1, Math.min(6, parseInt(b.count, 10) || 5));
       const { j, retrieved } = await callClaude(factsPrompt(b), Math.min(7, n + 2));
       if (j.ok === false) return res.json({ ok: false, note: clip(j.note, 300) || "Let's try a different topic." });
       const seen = (Array.isArray(b.exclude) ? b.exclude : []).slice(-80);
@@ -282,13 +291,13 @@ module.exports = async (req, res) => {
         if (!sources.length || !clip(f.fact, 10)) { dropped++; continue; }   // honesty rule: no verified source, no fact
         if (tooSimilar(f.fact, seen.concat(facts.map(x => x.fact)))) continue;
         facts.push({
-          flavor: FLAVORS[f.flavor] ? f.flavor : "true",
+          flavor: FLAVORS[f.flavor] ? f.flavor : "littleknown", myth: f.flavor === "myth" ? clip(f.myth, 240) : "",
           fact: clip(f.fact, 260), explain: clip(f.explain, 900), comment: clip(f.comment, 200),
           wiki: clip(f.wiki, 120), photo: clip(f.photo, 80), sources
         });
       }
       const enough = facts.length >= n && j.enough !== false;
-      return res.json({ ok: true, enough, note: enough ? "" : clip(j.note, 300), facts: facts.slice(0, n), _diag: { pagesRead: retrieved.size, found: (j.facts || []).length, dropped } });
+      return res.json({ ok: true, enough, note: enough ? "" : clip(j.note, 300), related: clip(j.related, 80), facts: facts.slice(0, n), _diag: { pagesRead: retrieved.size, found: (j.facts || []).length, dropped } });
     }
     if (b.mode === "deeper") {
       const { j, retrieved } = await callClaude(deeperPrompt(b), 6);
