@@ -151,8 +151,9 @@ Reply shape:
 
 function comparePrompt(b) {
   const level = b.level === "family" ? "family" : "grown";
-  return `A visitor asked ANOTHER AI assistant about this fact and pasted its reply. Compare them honestly.
-${factBlock(b)}
+  const what = b.sheet ? `OUR FACT SHEET (topic: ${clip(b.topic, 160)}):\n${String(b.sheet).slice(0, 7000)}` : factBlock(b);
+  return `A visitor asked ANOTHER AI assistant about ${b.sheet ? "our fact sheet" : "this fact"} and pasted its reply. Compare them honestly.
+${what}
 ${b.report ? "OUR REPORT:\n" + reportText(b.report) + "\n" : ""}
 OTHER AI'S REPLY:
 """${String(b.other || "").slice(0, 5000)}"""
@@ -161,6 +162,23 @@ Use web search to check every point where they differ. Be fair: if the other AI 
 ${levelText(level)}
 Reply shape:
 <json>{"agreement": "matches|partly|differs", "summary": "2-4 sentences", "differences": ["each difference, and which side the sources support"], "new_info": ["anything useful the other AI added that checks out"], ${sourcesShape}}</json>`;
+}
+
+// The visitor jumps in during the show: a question about what they're hearing, or a new direction.
+function jumpPrompt(b) {
+  const level = b.level === "family" ? "family" : "grown";
+  return `A visitor is watching the "Just the Facts" show and jumped in.
+CURRENT TOPIC: "${clip(b.topic, 200)}"${b.category ? ` (category: ${clip(b.category, 60)})` : ""}
+FACT ON SCREEN: ${clip(b.fact && b.fact.fact, 300)}
+WHAT THEY SAID: "${clip(b.text, 500)}"
+
+First decide what they want:
+- "steer": they want to change or narrow the subject (e.g. "just do Monopoly", "only 1950s board games", "let's do sharks instead", "focus on the TV ads"). Give "topic": the new topic written as a clear search topic (e.g. "Monopoly (the board game)"), and "label": a short show title for it (under 40 characters, e.g. "Monopoly"). No search needed for a steer, and no sources.
+- "ask": they asked a question. Search, then answer in 3-6 sentences at the reading level below, with sources. Also give "photo": 2-5 plain search words for ONE helpful photo, or empty.
+If it breaks the content rules, use "ask" with "confirmed": false and a friendly redirect as the answer.
+${levelText(level)}
+Reply shape:
+<json>{"kind": "steer|ask", "topic": "", "label": "", "confirmed": true, "answer": "", "photo": "", ${sourcesShape}}</json>`;
 }
 
 // ---------- source checking (same rules as The Secrets of the World)
@@ -313,6 +331,13 @@ module.exports = async (req, res) => {
         return res.json({ confirmed: false, answer: j.confirmed === false && j.answer ? clip(j.answer, 1200) : "We couldn't confirm an answer with strong sources, so we won't guess. Try asking it a different way.", clarify: cleanClarify(j.clarify), sources });
       }
       return res.json({ confirmed: true, answer: clip(j.answer, 2200), photo: clip(j.photo, 80), clarify: cleanClarify(j.clarify), sources });
+    }
+    if (b.mode === "jump") {
+      const { j, retrieved } = await callClaude(jumpPrompt(b), 4);
+      if (j.kind === "steer" && clip(j.topic, 10)) return res.json({ kind: "steer", topic: clip(j.topic, 160), label: clip(j.label || j.topic, 60) });
+      const sources = verifySources(j.sources, retrieved);
+      if (!sources.length || j.confirmed === false) return res.json({ kind: "ask", confirmed: false, answer: j.confirmed === false && j.answer ? clip(j.answer, 1000) : "We couldn't confirm an answer with strong sources, so we won't guess. Try asking it a different way.", sources });
+      return res.json({ kind: "ask", confirmed: true, answer: clip(j.answer, 1800), photo: clip(j.photo, 80), sources });
     }
     if (b.mode === "compare") {
       const { j, retrieved } = await callClaude(comparePrompt(b), 5);
