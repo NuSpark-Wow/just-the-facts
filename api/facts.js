@@ -48,7 +48,8 @@ Three radio-style hosts read the facts aloud: Max, Dot and The Professor.
 
 ABSOLUTE HONESTY RULES:
 1. ALWAYS use the web_search tool before answering. Every fact must be supported by what you found in this conversation. Never rely on memory alone.
-2. Use strong sources only: government and science agencies, universities, museums, encyclopedias (Britannica, Wikipedia), peer-reviewed research, established news and science outlets. Avoid "fun fact" list sites, content farms, forums and social media. Weak sites are removed automatically, so a fact that only appears on one will be dropped.
+2. Use strong sources only: government and science agencies, universities, museums, encyclopedias (Britannica, Wikipedia), peer-reviewed research, established news, science and technology outlets (for tech topics: Wi-Fi Alliance, IEEE, Computer History Museum, Wired, Ars Technica, The Verge, CNET, PCMag), official league, museum and hall-of-fame sites for sports and toys, and major dictionaries for words. Avoid "fun fact" list sites, content farms, forums and social media. Weak sites are removed automatically, so a fact that only appears on one will be dropped.
+   Tip: for nearly every fact, also search for and cite the matching Wikipedia or Britannica article, so the fact keeps at least one source that is always accepted.
 3. Many viral "weird facts" are false (we only use 10% of our brains, goldfish have 3-second memories, the Great Wall is visible from space). Never present one of these as true.
 4. Every source URL you list MUST be one that appeared in your search results in this conversation. Never invent or guess URLs.
 5. Never make anything up: no invented numbers, names, dates or quotes. Round numbers only when the source does. If sources disagree, say so or leave the fact out.
@@ -186,7 +187,15 @@ function normUrl(u) { try { const x = new URL(String(u).trim()); return (x.hostn
 function hostOf(u) { try { return new URL(String(u).trim()).hostname.replace(/^www\./, "").toLowerCase(); } catch (e) { return ""; } }
 const words = t => new Set(String(t || "").toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3));
 const STRONG_SUFFIX = [".edu", ".gov", ".mil", ".int", ".ac.uk", ".gov.uk", ".edu.au", ".gov.au", ".ac.nz", ".govt.nz", ".gc.ca", ".museum", ".si.edu"];
-const STRONG_HOSTS = ["britannica.com","wikipedia.org","nationalgeographic.com","nationalgeographic.org","smithsonianmag.com","smithsonian.com","si.edu","amnh.org","nhm.ac.uk","sciencemuseum.org.uk","fi.edu","exploratorium.edu","metmuseum.org",
+const STRONG_HOSTS = [
+  // technology and computing
+  "wi-fi.org","ieee.org","computerhistory.org","wired.com","arstechnica.com","theverge.com","cnet.com","pcmag.com","techradar.com","zdnet.com","engadget.com","techcrunch.com","tomshardware.com","howtogeek.com","lifewire.com","computerworld.com","technologyreview.com","nist.gov","itu.int","w3.org","mozilla.org","apple.com","microsoft.com","google.com","blog.google","intel.com","cisco.com","qualcomm.com","nokia.com","ericsson.com","bell-labs.com",
+  // toys, games, sports, entertainment, food, transport, words
+  "toyhalloffame.org","museumofplay.org","lego.com","hasbro.com","mattel.com","nintendo.com","worldchess.com","fide.com","uschess.org","baseballhall.org","profootballhof.com","hoophall.com","nba.com","nfl.com","nhl.com","mlb.com","olympics.com","nascar.com","pga.com","usga.org","wimbledon.com",
+  "loc.gov","nypl.org","bfi.org.uk","imdb.com","variety.com","billboard.com","rollingstone.com","npr.org","pbs.org","cbc.ca","abc.net.au","nytimes.com","washingtonpost.com","latimes.com","usatoday.com","wsj.com","forbes.com","businessinsider.com","fortune.com","cnbc.com","smithsonianmag.com",
+  "seriouseats.com","foodnetwork.com","eater.com","whatscookingamerica.net","nationalgeographic.com","history.com","mentalfloss.com","atlasobscura.com","howstuffworks.com","livescience.com","popularmechanics.com","sciencefocus.com","bbc.co.uk","bbc.com","guinnessworldrecords.com",
+  "merriam-webster.com","etymonline.com","oed.com","dictionary.com","grammarly.com","collinsdictionary.com","cambridge.org","oxfordlearnersdictionaries.com",
+  "britannica.com","wikipedia.org","nationalgeographic.com","nationalgeographic.org","smithsonianmag.com","smithsonian.com","si.edu","amnh.org","nhm.ac.uk","sciencemuseum.org.uk","fi.edu","exploratorium.edu","metmuseum.org",
   "scientificamerican.com","nature.com","science.org","sciencedirect.com","springer.com","wiley.com","frontiersin.org","plos.org","pnas.org","cell.com","royalsocietypublishing.org","jstor.org","arxiv.org","ncbi.nlm.nih.gov",
   "livescience.com","space.com","newscientist.com","sciencenews.org","snexplores.org","sciencedaily.com","quantamagazine.org","popsci.com","discovermagazine.com","howstuffworks.com","iflscience.com","theconversation.com","sciencefriday.com","atlasobscura.com","mentalfloss.com",
   "bbc.co.uk","bbc.com","pbs.org","npr.org","reuters.com","apnews.com","time.com","theguardian.com","nytimes.com","washingtonpost.com","cbsnews.com","nbcnews.com","abcnews.go.com","cnn.com","usatoday.com","theatlantic.com","newyorker.com","economist.com","ft.com","wsj.com","forbes.com","bloomberg.com","history.com","biography.com",

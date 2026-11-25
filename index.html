@@ -715,6 +715,7 @@ function startShow(fresh){
   hush();
   S.facts = fresh ? [] : S.facts; S.idx = fresh ? 0 : S.facts.length; S.note = ""; S.ended = false; S.started = false;
   closeReport();
+  S.jumpFor = null; if ($("jumpOut") && !S.steer) $("jumpOut").innerHTML = "";
   $("setup").classList.add("hide"); $("studio").classList.remove("hide"); $("resumeRow").classList.add("hide");
   hostsHtml(true);
   S.offer = "";
@@ -841,6 +842,7 @@ function paintLoading(){
 }
 function paintCard(){
   clearInterval(loadTimer);
+  if (S.jumpFor != null && S.jumpFor !== S.idx) { S.jumpFor = null; const jo = $("jumpOut"); if (jo) jo.innerHTML = ""; }
   const f = S.facts[S.idx];
   if (S.ended && !S.facts[S.idx + 1]) return paintEnd();
   if (!f) {
@@ -1131,6 +1133,7 @@ async function jump(){
       return;
     }
     const R = rota(), host = R.includes("prof") ? "prof" : R[0];
+    S.jumpFor = S.idx;
     out.innerHTML = `<div class="jans"><b>Q: ${esc(text)}</b><p>${esc(j.answer)}</p><div id="jPic"></div>${j.sources && j.sources.length ? `<div class="small">Sources: ${j.sources.map(s => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>` : ""}</div>`;
     if (j.photo) findPhoto("", j.photo).then(p => { const el = $("jPic"); if (p && el) { el.className = "rpic"; el.innerHTML = photoHtml(p, j.photo); } });
     const run = S.run;
