@@ -361,7 +361,20 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "unknown_mode" });
   } catch (e) {
     console.error(e);
-    return res.status(502).json({ error: "failed", message: "The fact-checkers hit a snag. Please try again in a minute." });
+    const m = String(e && e.message || "");
+    let why = "other";
+    if (/credit balance|billing|spend limit|usage limit|monthly limit|insufficient/i.test(m)) why = "account_limit";
+    else if (/ 429|rate_limit|rate limit/i.test(m)) why = "busy";
+    else if (/overloaded| 529| 503/i.test(m)) why = "overloaded";
+    else if (/abort|timed? ?out/i.test(m)) why = "timeout";
+    const msg = {
+      account_limit: "The fact-checkers are taking a break right now (the AI account reached its limit). Please try again later.",
+      busy: "Lots of fact-checking going on right now. Please try again in a minute.",
+      overloaded: "The AI is extra busy right now. Please try again in a minute.",
+      timeout: "That search took too long. Please try again.",
+      other: "The fact-checkers hit a snag. Please try again in a minute."
+    }[why];
+    return res.status(502).json({ error: "failed", why, detail: m.slice(0, 160), message: msg });
   }
 };
 

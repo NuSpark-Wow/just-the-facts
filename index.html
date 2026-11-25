@@ -751,7 +751,7 @@ function fetchFacts(show){
         if (!j.enough) S.short = true;
         if (j.related && !S.related) S.related = j.related;
       })
-      .catch(e => { S.fail = errMsg(e); })
+      .catch(e => { S.fail = errMsg(e) + (e && e.data && e.data.detail ? " (details: " + String(e.data.detail).slice(0, 90) + ")" : ""); })
       .finally(() => { if (show !== S.show) return; S.pending--; paintDots(); paintNav(); if (!S.pending) finishFetch(); if (S.facts.length && !S.started) firstCard(); });
   });
 }
