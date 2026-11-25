@@ -697,7 +697,7 @@ function go(){
   const typed = $("topicIn").value.trim(), own = $("subIn").value.trim(), pickd = own || S.sub;
   if (!typed && !S.cat) return showErr("Pick a category or type a topic first.");
   hideErr();
-  S.offer = ""; S.related = "";
+  S.offer = ""; S.related = ""; S.offerNow = false;
   if (typed) { S.label = typed; S.topic = typed; }
   else if (S.cat === "On This Day") {
     S.label = `On This Day (${todayLabel()})${pickd ? ": " + pickd : ""}`;
@@ -751,7 +751,7 @@ function fetchFacts(show){
         if (!j.enough) S.short = true;
         if (j.related && !S.related) S.related = j.related;
       })
-      .catch(e => { S.fail = errMsg(e) + (e && e.data && e.data.detail ? " (details: " + String(e.data.detail).slice(0, 90) + ")" : ""); })
+      .catch(e => { S.fail = errMsg(e); })
       .finally(() => { if (show !== S.show) return; S.pending--; paintDots(); paintNav(); if (!S.pending) finishFetch(); if (S.facts.length && !S.started) firstCard(); });
   });
 }
@@ -764,8 +764,10 @@ function finishFetch(){
   const got = S.facts.length;
   if (S.declined && !got) { backToSetup(); showErr(S.note); S.declined = false; return; }
   const fresh = got - S.startCount;
-  if (!got) { paintCard(); S.note = S.fail || `We couldn't confirm any solid facts about "${S.label}".`; S.offer = S.related; paintNote(); S.fail = ""; if (S.offer && S.voice) say(rota().includes("prof") ? "prof" : rota()[0], `We couldn't find solid facts on that one. How about we try ${S.offer}?`, S.run); return; }
-  if (S.short || got < S.target) { S.note = `We could only confirm ${fresh} solid fact${fresh === 1 ? "" : "s"} about "${S.label}" this round. Rather than make any up, that's where we stop.`; S.offer = S.related; }
+  S.fresh = fresh;
+  if (!got) { paintCard(); S.note = S.fail || `We couldn't confirm any solid facts about "${S.label}".`; S.offer = S.related; S.offerNow = true; paintNote(); S.fail = ""; if (S.offer && S.voice) say(rota().includes("prof") ? "prof" : rota()[0], `We couldn't find solid facts on that one. How about we try ${S.offer}?`, S.run); return; }
+  // Came up short: the offer waits for the end of the show, unless nothing new was found at all
+  if (S.short || got < S.target) { S.note = ""; S.offer = S.related; S.offerNow = fresh === 0; }
   S.short = false; S.declined = false; S.fail = "";
   paintNote(); paintDots();
 }
@@ -809,10 +811,10 @@ async function playFrom(i){
   endShow(run);
 }
 async function endShow(run){
-  S.ended = true; paintCard(); paintDots();
+  S.ended = true; paintCard(); paintDots(); paintNote();
   if (!S.voice) return;
   const got = S.facts.length - S.startCount, R = rota(), closer = R.includes("prof") ? "prof" : R[R.length - 1];
-  if (S.offer) { await say(closer, `We ran out of facts on ${S.label}, and we don't make things up. How about we continue with ${S.offer}? Tap yes to keep going.`, run); return; }
+  if (S.offer) { await say(closer, `${offerLine(true)} How about we continue with ${S.offer}? Tap yes to keep going.`, run); return; }
   await say(closer, `And those are the facts! Tap Find More for ten more, or Dig Deeper on any card for the full story.`, run);
 }
 
@@ -821,11 +823,18 @@ function scrollTop(){
   try { $("app").scrollIntoView({ behavior:"smooth", block:"start" }); } catch (e) {}
   if (window.parent !== window) try { window.parent.postMessage({ lwToolScroll:true }, "*"); } catch (e) {}
 }
+// What we found this round, said honestly: "found 8 more" is not "ran out"
+function offerLine(spoken){
+  const n = S.fresh || 0, total = S.facts.length, more = S.startCount > 0;
+  const topic = spoken ? S.label : `<b>${esc(S.label)}</b>`;
+  if (!n) return `We couldn't find any ${more ? "more " : ""}solid facts on ${topic}, and we don't make things up.`;
+  return `We found ${n} ${more ? "more " : ""}solid fact${n === 1 ? "" : "s"} on ${topic}${more ? ` (${total} in all)` : ""}. That's everything we could confirm this round.`;
+}
 function paintNote(){
   const el = $("note");
-  if (S.offer) {
+  if (S.offer && (S.offerNow || S.ended)) {
     el.className = "offer";
-    el.innerHTML = `We ran out of solid facts on <b>${esc(S.label)}</b>, and we don't make things up. How about we continue with <b>${esc(S.offer)}</b>?<div class="nav"><button class="btn y" type="button" id="offYes">Yes, keep going</button><button class="btn" type="button" id="offNo">No thanks</button></div>`;
+    el.innerHTML = `${offerLine(false)} How about we continue with <b>${esc(S.offer)}</b>?<div class="nav"><button class="btn y" type="button" id="offYes">Yes, keep going</button><button class="btn" type="button" id="offNo">No thanks</button></div>`;
     $("offYes").onclick = () => { const t = S.offer; S.offer = ""; S.note = ""; S.label = t; S.topic = t; S.cat = ""; S.sub = ""; startShow(false); };
     $("offNo").onclick = () => { S.offer = ""; paintNote(); };
     return;
@@ -880,6 +889,7 @@ function paintEnd(){
       <button class="btn" type="button" id="printBtn">🖨 Print fact sheet</button>
     </div></div>`;
   $("moreBtn").onclick = () => startShow(false);
+  paintNote();
   $("newBtn").onclick = () => backToSetup(true);
   $("printBtn").onclick = printSheet;
   paintNav();
