@@ -127,16 +127,20 @@ module.exports = async (req, res) => {
   const q = String(u.searchParams.get("q") || "").replace(/[^\w\s'-]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
   if (u.searchParams.get("check") === "1") return res.json({ serper_key_set: !!String(process.env.SERPER_API_KEY || "").trim(), anthropic_key_set: !!process.env.ANTHROPIC_API_KEY });
   if (!q || BAD.test(q)) return res.json({ image: null });
-  if (cache.has(q)) return res.json({ image: cache.get(q) });
+  // "seen": photos already used in this game (last 80 characters of each address, joined by |), so a fact never repeats one.
+  const seenList = String(u.searchParams.get("seen") || "").split("|").map(x => x.trim()).filter(Boolean).slice(0, 40);
+  const seen = seenList.length ? new Set(seenList.map(x => x.slice(-80))) : null;
+  const key = q + (seen ? "|" + seenList.join("|") : "");
+  if (cache.has(key)) return res.json({ image: cache.get(key) });
   const notes = [];
   let image = null;
   for (const [name, fn] of [["commons", fromCommons], ["web", fromWeb]]) {
-    try { image = await fn(q, null, null); } catch (e) { notes.push(name + ": " + e.message); }
+    try { image = await fn(q, null, seen); } catch (e) { notes.push(name + ": " + e.message); }
     if (name === "web" && lastWebNote) notes.push("web: " + lastWebNote);
     if (image) break;
   }
   if (cache.size > 300) cache.clear();
-  cache.set(q, image);
+  cache.set(key, image);
   res.setHeader("Cache-Control", "public, max-age=86400");
   return res.json({ image, notes });
 };
