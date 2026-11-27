@@ -530,20 +530,21 @@ function wikiPhoto(title, width){
     } catch (e) { return null; }
   })();
 }
-// One photo: Wikipedia's own picture first, then Commons and the web through our server (Serper).
-const findMem = {};
-function findPhoto(wiki, words){
-  const k = (wiki || "") + "|" + (words || "");
-  if (findMem[k]) return findMem[k];
-  return findMem[k] = (async () => {
+// One photo per fact: Wikipedia's own picture first, then Commons and the web through our server (Serper).
+// No repeats in a game: if a photo was already used on another fact (common when every fact is about
+// the same topic), we search with the fact's own photo words instead, skipping photos already shown.
+function findPhoto(wiki, words, used){
+  used = used || [];
+  return (async () => {
     const w = await wikiPhoto(wiki);
-    if (w) return w;
+    if (w && !used.includes(w.url)) return w;
     if (!words) return null;
     try {
-      const r = await fetch("/api/image?q=" + encodeURIComponent(words));
+      const seen = used.map(u => String(u).slice(-80)).join("|");
+      const r = await fetch("/api/image?q=" + encodeURIComponent(words) + (seen ? "&seen=" + encodeURIComponent(seen) : ""));
       const j = await r.json();
       const im = j && j.image;
-      if (!im || !im.src) return null;
+      if (!im || !im.src || used.includes(im.src)) return null;
       return { url: im.src, page: im.link, artist: im.credit, license: im.license, web: !!im.web, source: im.source };
     } catch (e) { return null; }
   })();
@@ -872,7 +873,8 @@ function paintCard(){
       <div class="bubble ${S.voice && S.playing ? "" : "show"}" id="bubble" style="--c:${h.c}"><div class="face">${h.init}</div><p><small>${esc(h.name)}</small>${esc(f.comment)}</p></div>
       <div class="src"><span class="true">TRUE ✓</span>Checked: ${f.sources.map((s, i) => `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a>`).join(" · ")}</div>
     </div>`;
-  if (f.wiki || f.photo) findPhoto(f.wiki, f.photo).then(p => {
+  if (!f._pic && (f.wiki || f.photo)) f._pic = findPhoto(f.wiki, f.photo, S.facts.filter(x => x !== f && x._url).map(x => x._url)).then(p => { if (p) f._url = p.url; return p; });
+  if (f._pic) f._pic.then(p => {
     const box = $("pic"); if (!p || !box || S.facts[S.idx] !== f) return;
     box.innerHTML = `<div class="emo">${fl.emo}</div>` + photoHtml(p, f.wiki || f.photo);
   });
